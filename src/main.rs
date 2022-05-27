@@ -1,12 +1,15 @@
 use bevy::prelude::*;
 use bevy_kira_audio::{AudioPlugin, AudioSource};
+use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 const PLAYER_BALL_RADIUS: f32 = 6.0;
+const PIXELS_PER_METER: f32 = 100.0;
 
 mod ball;
 mod input;
 mod peg;
+mod trajectory;
 
 #[derive(Default)]
 pub struct GameAssets {
@@ -17,11 +20,15 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(AudioPlugin)
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
+        .add_plugin(ShapePlugin)
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(
+            PIXELS_PER_METER,
+        ))
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(input::InputPlugin)
         .add_plugin(peg::PegPlugin)
         .add_plugin(ball::BallPlugin)
+        .add_plugin(trajectory::TrajectoryPlugin)
         .insert_resource(GameAssets::default())
         .add_startup_system(load_assets)
         .add_startup_system(setup_graphics)
@@ -35,7 +42,7 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
         asset_server.load("sfx/peg/impactSoft_heavy_002.ogg"),
         asset_server.load("sfx/peg/impactSoft_heavy_003.ogg"),
         asset_server.load("sfx/peg/impactSoft_heavy_004.ogg"),
-    ]
+    ];
 }
 
 fn setup_graphics(mut commands: Commands) {
@@ -43,10 +50,10 @@ fn setup_graphics(mut commands: Commands) {
 }
 
 fn setup_level(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert(Collider::cuboid(500.0, 20.0))
-        .insert(Transform::from_xyz(0.0, -300.0, 0.0));
+    // commands
+    //     .spawn()
+    //     .insert(Collider::cuboid(500.0, 20.0))
+    //     .insert(Transform::from_xyz(0.0, -300.0, 0.0));
     commands
         .spawn()
         .insert(Collider::cuboid(500.0, 20.0))

@@ -27,7 +27,8 @@ fn spawn_ball_system(mut commands: Commands, input_state: Res<InputState>) {
             combine_rule: CoefficientCombineRule::Max,
         })
         .insert(Velocity {
-            linvel: input_state.cursor_position.normalize_or_zero() * 200.0,
+            linvel: (input_state.cursor_position - Vec2::new(0.0, 150.0)).normalize_or_zero()
+                * 200.0,
             ..Default::default()
         })
         .insert(ExternalImpulse::default())
@@ -37,6 +38,5 @@ fn spawn_ball_system(mut commands: Commands, input_state: Res<InputState>) {
             mass: 1.0,
             ..Default::default()
         })
-        .insert(GravityScale(2.0))
         .insert(Ball);
 }

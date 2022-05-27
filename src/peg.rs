@@ -10,7 +10,7 @@ use crate::{ball::Ball, input::InputState, GameAssets};
 struct Peg;
 
 #[derive(Component)]
-struct PegToDespawn;
+pub struct PegToDespawn;
 
 pub struct PegPlugin;
 
@@ -28,7 +28,7 @@ fn spawn_peg_system(mut commands: Commands, input_state: Res<InputState>) {
         return;
     }
     commands.spawn_batch((0..=20).flat_map(|i| {
-        (1..=11).map(move |j| {
+        (1..=7).map(move |j| {
             (
                 Collider::ball(5.0),
                 Transform::from_xyz((10 - i) as f32 * 30.0, -j as f32 * 30.0, 0.0),
