@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_kira_audio::Audio;
 use bevy_rapier2d::prelude::*;
 
-use crate::{ball::Ball, input::InputState, GameAssets};
+use crate::{ball::Ball, input_state::InputState, GameAssets, GameState};
 
 #[derive(Component)]
 struct Peg;

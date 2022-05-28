@@ -25,7 +25,7 @@ fn main() {
             PIXELS_PER_METER,
         ))
         .add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(input::InputPlugin)
+        .add_plugin(input_state::InputStatePlugin)
         .add_plugin(peg::PegPlugin)
         .add_plugin(ball::BallPlugin)
         .add_plugin(trajectory::TrajectoryPlugin)

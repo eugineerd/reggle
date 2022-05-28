@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::{input::InputState, PLAYER_BALL_RADIUS};
+use crate::{input_state::InputState, PLAYER_BALL_RADIUS};
 
 #[derive(Component)]
 pub struct Ball;

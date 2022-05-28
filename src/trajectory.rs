@@ -12,7 +12,7 @@ use bevy_rapier2d::rapier::prelude::{
 };
 
 use crate::ball::Ball;
-use crate::input::InputState;
+use crate::input_state::InputState;
 use crate::peg::PegToDespawn;
 use crate::PIXELS_PER_METER;
 use crate::PLAYER_BALL_RADIUS;
