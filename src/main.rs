@@ -7,13 +7,19 @@ const PLAYER_BALL_RADIUS: f32 = 6.0;
 const PIXELS_PER_METER: f32 = 100.0;
 
 mod ball;
-mod input;
+mod input_state;
 mod peg;
 mod trajectory;
+mod ui;
 
 #[derive(Default)]
 pub struct GameAssets {
     pub peg_hit_sound: Vec<Handle<AudioSource>>,
+}
+
+#[derive(Default)]
+pub struct GameState {
+    pub player_score: usize,
 }
 
 fn main() {
@@ -29,7 +35,9 @@ fn main() {
         .add_plugin(peg::PegPlugin)
         .add_plugin(ball::BallPlugin)
         .add_plugin(trajectory::TrajectoryPlugin)
+        .add_plugin(ui::UiPlugin)
         .insert_resource(GameAssets::default())
+        .insert_resource(GameState::default())
         .add_startup_system(load_assets)
         .add_startup_system(setup_graphics)
         .add_startup_system(setup_level)

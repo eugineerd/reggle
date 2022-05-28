@@ -53,6 +53,7 @@ fn peg_despawn_system(
 fn peg_hit_system(
     rapier_context: Res<RapierContext>,
     mut commands: Commands,
+    mut game_state: ResMut<GameState>,
     balls: Query<Entity, With<Ball>>,
     pegs: Query<Entity, (With<Peg>, Without<PegToDespawn>)>,
     audio: Res<Audio>,
@@ -72,6 +73,7 @@ fn peg_hit_system(
             if let Some(norm) = contact_pair.manifold(0).map(|x| x.normal()) {
                 // Reduces number of `ghost` collisions a bit. See peg_despawn_system note
                 if norm.length() > 0.01 {
+                    game_state.player_score += 1;
                     commands.entity(other_collider).insert(PegToDespawn);
                     let idx = fastrand::usize(..assets.peg_hit_sound.len());
                     audio.play(assets.peg_hit_sound[idx].clone());
