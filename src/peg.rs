@@ -32,6 +32,7 @@ fn spawn_peg_system(mut commands: Commands, input_state: Res<InputState>) {
             (
                 Collider::ball(5.0),
                 Transform::from_xyz((10 - i) as f32 * 30.0, -j as f32 * 30.0, 0.0),
+                Name::new("Peg"),
                 Peg,
             )
         })

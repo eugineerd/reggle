@@ -38,5 +38,6 @@ fn spawn_ball_system(mut commands: Commands, input_state: Res<InputState>) {
             mass: 1.0,
             ..Default::default()
         })
+        .insert(Name::new("Ball"))
         .insert(Ball);
 }

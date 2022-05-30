@@ -7,6 +7,7 @@ const PLAYER_BALL_RADIUS: f32 = 6.0;
 const PIXELS_PER_METER: f32 = 100.0;
 
 mod ball;
+mod debug;
 mod input_state;
 mod peg;
 mod trajectory;
@@ -31,6 +32,7 @@ fn main() {
             PIXELS_PER_METER,
         ))
         .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(debug::DebugPlugin)
         .add_plugin(input_state::InputStatePlugin)
         .add_plugin(peg::PegPlugin)
         .add_plugin(ball::BallPlugin)
