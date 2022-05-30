@@ -10,7 +10,16 @@ pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(spawn_ball_system);
+        app.add_system(spawn_ball_system)
+            .add_system(ball_despawn_system);
+    }
+}
+
+fn ball_despawn_system(mut commands: Commands, balls: Query<(Entity, &Transform), With<Ball>>) {
+    for (entity, tr) in balls.iter() {
+        if tr.translation.x.abs() > 1000.0 || tr.translation.y.abs() > 1000.0 {
+            commands.entity(entity).despawn()
+        }
     }
 }
 
