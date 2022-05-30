@@ -61,6 +61,7 @@ fn peg_hit_system(
     mut game_state: ResMut<GameState>,
     balls: Query<Entity, With<Ball>>,
     pegs: Query<Entity, (With<Peg>, Without<PegToDespawn>)>,
+    removed_pegs: Query<Entity, With<PegToDespawn>>,
     audio: Res<Audio>,
     assets: Res<GameAssets>,
 ) {
@@ -73,6 +74,10 @@ fn peg_hit_system(
             };
 
             if !pegs.contains(other_collider) {
+                if !removed_pegs.contains(other_collider) {
+                    let idx = fastrand::usize(..assets.ball_hit_sound.len());
+                    audio.play(assets.ball_hit_sound[idx].clone());
+                }
                 continue;
             }
             if let Some(norm) = contact_pair.manifold(0).map(|x| x.normal()) {

@@ -1,3 +1,6 @@
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+
 use bevy::prelude::*;
 use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
@@ -43,10 +46,18 @@ fn main() {
 
 fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
     assets.peg_hit_sound = vec![
-        asset_server.load("sfx/peg/impactSoft_heavy_001.ogg"),
-        asset_server.load("sfx/peg/impactSoft_heavy_002.ogg"),
-        asset_server.load("sfx/peg/impactSoft_heavy_003.ogg"),
-        asset_server.load("sfx/peg/impactSoft_heavy_004.ogg"),
+        asset_server.load("sfx/peg/impactGlass_medium_000.ogg"),
+        asset_server.load("sfx/peg/impactGlass_medium_001.ogg"),
+        asset_server.load("sfx/peg/impactGlass_medium_002.ogg"),
+        asset_server.load("sfx/peg/impactGlass_medium_003.ogg"),
+        asset_server.load("sfx/peg/impactGlass_medium_004.ogg"),
+    ];
+
+    assets.ball_hit_sound = vec![
+        asset_server.load("sfx/ball/impactSoft_heavy_001.ogg"),
+        asset_server.load("sfx/ball/impactSoft_heavy_002.ogg"),
+        asset_server.load("sfx/ball/impactSoft_heavy_003.ogg"),
+        asset_server.load("sfx/ball/impactSoft_heavy_004.ogg"),
     ];
 
     assets.ball_image = asset_server.load("sprites/ball.png");
