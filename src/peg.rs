@@ -4,7 +4,11 @@ use bevy::prelude::*;
 use bevy_kira_audio::Audio;
 use bevy_rapier2d::prelude::*;
 
-use crate::{ball::Ball, input_state::InputState, GameAssets, GameState};
+use crate::{
+    ball::Ball,
+    input_state::{GameAction, InputState},
+    GameAssets, GameState,
+};
 
 #[derive(Component)]
 struct Peg;
@@ -24,7 +28,7 @@ impl Plugin for PegPlugin {
 }
 
 fn spawn_peg_system(mut commands: Commands, input_state: Res<InputState>) {
-    if !input_state.spawn_platform_action {
+    if !input_state.just_active(GameAction::SpawnPegs) {
         return;
     }
     commands.spawn_batch((0..=20).flat_map(|i| {

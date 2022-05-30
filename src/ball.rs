@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::{input_state::InputState, PLAYER_BALL_RADIUS};
+use crate::{common::GameAssets, PLAYER_BALL_RADIUS};
 
 #[derive(Component)]
 pub struct Ball;
@@ -10,8 +10,7 @@ pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(spawn_ball_system)
-            .add_system(ball_despawn_system);
+        app.add_system(ball_despawn_system);
     }
 }
 
@@ -23,30 +22,68 @@ fn ball_despawn_system(mut commands: Commands, balls: Query<(Entity, &Transform)
     }
 }
 
-fn spawn_ball_system(mut commands: Commands, input_state: Res<InputState>) {
-    if !input_state.spawn_ball_action {
-        return;
+#[derive(Bundle)]
+pub struct BallPhysicsBundle {
+    pub rigid_body: RigidBody,
+    pub collider: Collider,
+    pub restitution: Restitution,
+    pub ccd: Ccd,
+    pub transform: Transform,
+    pub mass: MassProperties,
+}
+
+impl BallPhysicsBundle {
+    pub fn new(translation: Vec3) -> Self {
+        Self {
+            rigid_body: RigidBody::Dynamic,
+            collider: Collider::ball(PLAYER_BALL_RADIUS),
+            restitution: Restitution {
+                coefficient: 0.9,
+                combine_rule: CoefficientCombineRule::Max,
+            },
+            ccd: Ccd::enabled(),
+            transform: Transform::from_translation(translation),
+            mass: MassProperties {
+                mass: 1.0,
+                ..Default::default()
+            },
+        }
     }
-    commands
-        .spawn()
-        .insert(RigidBody::Dynamic)
-        .insert(Collider::ball(PLAYER_BALL_RADIUS))
-        .insert(Restitution {
-            coefficient: 0.9,
-            combine_rule: CoefficientCombineRule::Max,
-        })
-        .insert(Velocity {
-            linvel: (input_state.cursor_position - Vec2::new(0.0, 150.0)).normalize_or_zero()
-                * 200.0,
-            ..Default::default()
-        })
-        .insert(ExternalImpulse::default())
-        .insert(Transform::from_xyz(0.0, 150.0, 0.0))
-        .insert(Ccd::enabled())
-        .insert(MassProperties {
-            mass: 1.0,
-            ..Default::default()
-        })
-        .insert(Name::new("Ball"))
-        .insert(Ball);
+}
+
+#[derive(Bundle)]
+pub struct BallBundle {
+    #[bundle]
+    pub ball_physics: BallPhysicsBundle,
+
+    // SpriteBundle without tranform
+    pub sprite: Sprite,
+    pub global_transform: GlobalTransform,
+    pub texture: Handle<Image>,
+    pub visibility: Visibility,
+
+    pub name: Name,
+    pub ball: Ball,
+}
+
+impl BallBundle {
+    pub fn new(translation: Vec3, game_assets: &GameAssets) -> Self {
+        Self {
+            ball_physics: BallPhysicsBundle::new(translation),
+
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(
+                    PLAYER_BALL_RADIUS * 2.0,
+                    PLAYER_BALL_RADIUS * 2.0,
+                )),
+                ..Default::default()
+            },
+            global_transform: Default::default(),
+            texture: game_assets.ball_image.clone(),
+            visibility: Default::default(),
+
+            name: Name::new("Ball"),
+            ball: Ball,
+        }
+    }
 }

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_kira_audio::{AudioPlugin, AudioSource};
+use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
 
@@ -7,21 +7,15 @@ const PLAYER_BALL_RADIUS: f32 = 6.0;
 const PIXELS_PER_METER: f32 = 100.0;
 
 mod ball;
+mod common;
 mod debug;
 mod input_state;
+mod launcher;
 mod peg;
 mod trajectory;
 mod ui;
 
-#[derive(Default)]
-pub struct GameAssets {
-    pub peg_hit_sound: Vec<Handle<AudioSource>>,
-}
-
-#[derive(Default)]
-pub struct GameState {
-    pub player_score: usize,
-}
+use common::*;
 
 fn main() {
     App::new()
@@ -36,6 +30,7 @@ fn main() {
         .add_plugin(input_state::InputStatePlugin)
         .add_plugin(peg::PegPlugin)
         .add_plugin(ball::BallPlugin)
+        .add_plugin(launcher::LauncherPlugin)
         .add_plugin(trajectory::TrajectoryPlugin)
         .add_plugin(ui::UiPlugin)
         .insert_resource(GameAssets::default())
@@ -53,6 +48,9 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
         asset_server.load("sfx/peg/impactSoft_heavy_003.ogg"),
         asset_server.load("sfx/peg/impactSoft_heavy_004.ogg"),
     ];
+
+    assets.ball_image = asset_server.load("sprites/ball.png");
+    assets.launcher_image = asset_server.load("sprites/launcher.png");
 }
 
 fn setup_graphics(mut commands: Commands) {

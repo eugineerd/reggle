@@ -12,10 +12,10 @@ use bevy_rapier2d::rapier::prelude::{
 };
 
 use crate::ball::Ball;
-use crate::input_state::InputState;
+use crate::ball::BallPhysicsBundle;
+use crate::launcher::Launcher;
 use crate::peg::PegToDespawn;
 use crate::PIXELS_PER_METER;
-use crate::PLAYER_BALL_RADIUS;
 
 pub struct TrajectoryPlugin;
 
@@ -86,32 +86,30 @@ impl TrajectoryWorld {
         self.colliders.insert(entity, handle);
     }
 
-    fn simulate_ball(
+    fn simulate_body_trajectory(
         &mut self,
         start_pos: Vec2,
-        ball_impulse: Vec2,
-        ball_shape: &Collider,
-        ball_rest: &Restitution,
+        linvel: Vec2,
+        collider: &Collider,
+        restitution: &Restitution,
         mut max_collisions: usize,
     ) -> Vec<Vec2> {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation((start_pos / self.scale).into())
-            .linvel((ball_impulse / self.scale).into())
+            .linvel((linvel / self.scale).into())
             .build();
-        let ball = ball_shape
+        let ball = collider
             .as_unscaled_typed_shape()
             .raw_scale_by(Vec2::ONE / self.scale, self.scaled_shape_subdivision)
             .unwrap();
         let collider = ColliderBuilder::new(ball)
-            .restitution(ball_rest.coefficient)
+            .restitution(restitution.coefficient)
             .restitution_combine_rule(bevy_rapier2d::rapier::prelude::CoefficientCombineRule::Max)
             .build();
-        let ball_body_handle = self.rigid_body_set.insert(rigid_body);
-        let ball_collider_handle = self.collider_set.insert_with_parent(
-            collider,
-            ball_body_handle,
-            &mut self.rigid_body_set,
-        );
+        let body_handle = self.rigid_body_set.insert(rigid_body);
+        let ball_collider_handle =
+            self.collider_set
+                .insert_with_parent(collider, body_handle, &mut self.rigid_body_set);
 
         let integration_parameters = IntegrationParameters {
             dt: 1.0 / 60.0,
@@ -137,8 +135,8 @@ impl TrajectoryWorld {
                 &event_handler,
             );
 
-            let ball_body = &self.rigid_body_set[ball_body_handle];
-            positions.push((*ball_body.translation() * self.scale).into());
+            let body = &self.rigid_body_set[body_handle];
+            positions.push((*body.translation() * self.scale).into());
 
             if self
                 .narrow_phase
@@ -153,7 +151,7 @@ impl TrajectoryWorld {
             }
         }
         self.rigid_body_set.remove(
-            ball_body_handle,
+            body_handle,
             &mut self.island_manager,
             &mut self.collider_set,
             &mut self.impulse_joint_set,
@@ -192,34 +190,37 @@ struct Trajectory;
 fn draw_trajectory_system(
     mut commands: Commands,
     mut trajectory_world: ResMut<TrajectoryWorld>,
-    input: Res<InputState>,
+    launcher: Query<(&Transform, &Launcher)>,
     lines: Query<Entity, With<Trajectory>>,
 ) {
-    let start_pos = Vec2::new(0.0, 150.0);
     for line in lines.iter() {
         commands.entity(line).despawn();
     }
-    let mut dir = (input.cursor_position - start_pos).normalize_or_zero();
-    dir *= 200.0;
-    let ball_shape = Collider::ball(PLAYER_BALL_RADIUS);
-    let ball_rest = Restitution {
-        coefficient: 0.9,
-        combine_rule: CoefficientCombineRule::Max,
-    };
-    let points = trajectory_world.simulate_ball(start_pos, dir, &ball_shape, &ball_rest, 2);
+    // Let else and if let chains can't come soon enough...
+    if let Ok((launcher_tr, launcher)) = launcher.get_single() {
+        let ball_bundle = BallPhysicsBundle::new(launcher_tr.translation);
+        let start_pos = launcher_tr.translation.truncate();
+        let points = trajectory_world.simulate_body_trajectory(
+            start_pos,
+            launcher.get_impulse(),
+            &ball_bundle.collider,
+            &ball_bundle.restitution,
+            2,
+        );
 
-    let mut path_builder = PathBuilder::new();
-    path_builder.move_to(start_pos);
-    for point in points {
-        path_builder.line_to(point);
+        let mut path_builder = PathBuilder::new();
+        path_builder.move_to(start_pos);
+        for point in points {
+            path_builder.line_to(point);
+        }
+        let line = path_builder.build();
+
+        commands
+            .spawn_bundle(GeometryBuilder::build_as(
+                &line,
+                DrawMode::Stroke(StrokeMode::new(Color::GREEN, 3.0)),
+                Transform::default(),
+            ))
+            .insert(Trajectory);
     }
-    let line = path_builder.build();
-
-    commands
-        .spawn_bundle(GeometryBuilder::build_as(
-            &line,
-            DrawMode::Stroke(StrokeMode::new(Color::GREEN, 3.0)),
-            Transform::default(),
-        ))
-        .insert(Trajectory);
 }

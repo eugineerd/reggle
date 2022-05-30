@@ -1,11 +1,4 @@
-use bevy::prelude::*;
-
-#[derive(Default)]
-pub struct InputState {
-    pub cursor_position: Vec2,
-    pub spawn_ball_action: bool,
-    pub spawn_platform_action: bool,
-}
+use bevy::{prelude::*, utils::HashSet};
 
 pub struct InputStatePlugin;
 
@@ -16,13 +9,41 @@ impl Plugin for InputStatePlugin {
     }
 }
 
+#[derive(Default)]
+pub struct InputState {
+    pub cursor_position: Vec2,
+    active_actions: HashSet<GameAction>,
+    just_active_actions: HashSet<GameAction>,
+}
+
+impl InputState {
+    pub fn active(&self, action: GameAction) -> bool {
+        self.active_actions.contains(&action)
+    }
+
+    pub fn just_active(&self, action: GameAction) -> bool {
+        self.just_active_actions.contains(&action)
+    }
+}
+
+// Should this be in common?
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
+pub enum GameAction {
+    Shoot,
+    SpawnPegs,
+    MoveLauncher,
+}
+
 fn input_state_system(
-    _keys: Res<Input<KeyCode>>,
+    keys: Res<Input<KeyCode>>,
     mouse_buttons: Res<Input<MouseButton>>,
     mut cursor_event_reader: EventReader<CursorMoved>,
     windows: Res<Windows>,
     mut input_state: ResMut<InputState>,
 ) {
+    input_state.active_actions.clear();
+    input_state.just_active_actions.clear();
+
     if let Some(e) = cursor_event_reader.iter().last() {
         if let Some(window) = windows.get(e.id) {
             let game_x = e.position.x - window.width() / 2.0;
@@ -31,15 +52,28 @@ fn input_state_system(
         }
     }
 
-    if mouse_buttons.just_pressed(MouseButton::Left) {
-        input_state.spawn_ball_action = true;
-    } else {
-        input_state.spawn_ball_action = false;
+    if keys.pressed(KeyCode::LControl) {
+        input_state.active_actions.insert(GameAction::MoveLauncher);
+    }
+    if keys.just_pressed(KeyCode::LControl) {
+        input_state
+            .just_active_actions
+            .insert(GameAction::MoveLauncher);
     }
 
+    if mouse_buttons.pressed(MouseButton::Left) {
+        input_state.active_actions.insert(GameAction::Shoot);
+    }
+    if mouse_buttons.just_pressed(MouseButton::Left) {
+        input_state.just_active_actions.insert(GameAction::Shoot);
+    }
+
+    if mouse_buttons.pressed(MouseButton::Right) {
+        input_state.active_actions.insert(GameAction::SpawnPegs);
+    }
     if mouse_buttons.just_pressed(MouseButton::Right) {
-        input_state.spawn_platform_action = true;
-    } else {
-        input_state.spawn_platform_action = false;
+        input_state
+            .just_active_actions
+            .insert(GameAction::SpawnPegs);
     }
 }
