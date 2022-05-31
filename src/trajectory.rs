@@ -1,6 +1,11 @@
 use bevy::prelude::*;
 use bevy::utils::HashMap;
-use bevy_prototype_lyon::prelude::*;
+use bevy::utils::HashSet;
+use bevy_prototype_lyon::prelude::DrawMode;
+use bevy_prototype_lyon::prelude::GeometryBuilder;
+use bevy_prototype_lyon::prelude::PathBuilder;
+use bevy_prototype_lyon::prelude::StrokeMode;
+use bevy_prototype_lyon::shapes::Circle;
 use bevy_rapier2d::na;
 use bevy_rapier2d::prelude::*;
 use bevy_rapier2d::rapier::prelude::ColliderHandle;
@@ -16,6 +21,7 @@ use crate::ball::BallPhysicsBundle;
 use crate::launcher::Launcher;
 use crate::peg::PegToDespawn;
 use crate::PIXELS_PER_METER;
+use crate::PLAYER_BALL_RADIUS;
 
 pub struct TrajectoryPlugin;
 
@@ -93,7 +99,7 @@ impl TrajectoryWorld {
         collider: &Collider,
         restitution: &Restitution,
         mut max_collisions: usize,
-    ) -> Vec<Vec2> {
+    ) -> (Vec<Vec2>, Vec<Vec2>) {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation((start_pos / self.scale).into())
             .linvel((linvel / self.scale).into())
@@ -118,7 +124,9 @@ impl TrajectoryWorld {
         let physics_hooks = ();
         let event_handler = ();
 
-        let mut positions: Vec<bevy::prelude::Vec2> = Vec::with_capacity(300);
+        let mut trajectory_positions: Vec<bevy::prelude::Vec2> = Vec::with_capacity(300);
+        let mut hit_positions: Vec<bevy::prelude::Vec2> = Vec::new();
+        let mut encountered_colliders = HashSet::new();
         for _ in 0..300 {
             self.physics_pipeline.step(
                 &self.gravity,
@@ -136,14 +144,22 @@ impl TrajectoryWorld {
             );
 
             let body = &self.rigid_body_set[body_handle];
-            positions.push((*body.translation() * self.scale).into());
+            let position = (*body.translation() * self.scale).into();
 
-            if self
-                .narrow_phase
-                .contacts_with(ball_collider_handle)
-                .next()
-                .is_some()
-            {
+            trajectory_positions.push(position);
+            if let Some(pair) = self.narrow_phase.contacts_with(ball_collider_handle).next() {
+                let other_collider = if pair.collider1 != ball_collider_handle {
+                    pair.collider1
+                } else {
+                    pair.collider2
+                };
+                if encountered_colliders.contains(&other_collider)
+                    || pair.manifolds.get(0).map_or(true, |m| m.points.is_empty())
+                {
+                    continue;
+                }
+                encountered_colliders.insert(other_collider);
+                hit_positions.push(position);
                 max_collisions -= 1;
                 if max_collisions == 0 {
                     break;
@@ -158,7 +174,8 @@ impl TrajectoryWorld {
             &mut self.multibody_joint_set,
             true,
         );
-        positions
+
+        (trajectory_positions, hit_positions)
     }
 }
 
@@ -200,7 +217,7 @@ fn draw_trajectory_system(
     if let Ok((launcher_tr, launcher)) = launcher.get_single() {
         let ball_bundle = BallPhysicsBundle::new(launcher_tr.translation);
         let start_pos = launcher_tr.translation.truncate();
-        let points = trajectory_world.simulate_body_trajectory(
+        let (trajectory_points, hit_points) = trajectory_world.simulate_body_trajectory(
             start_pos,
             launcher.get_impulse(),
             &ball_bundle.collider,
@@ -210,7 +227,7 @@ fn draw_trajectory_system(
 
         let mut path_builder = PathBuilder::new();
         path_builder.move_to(start_pos);
-        for point in points {
+        for point in trajectory_points {
             path_builder.line_to(point);
         }
         let line = path_builder.build();
@@ -222,5 +239,19 @@ fn draw_trajectory_system(
                 Transform::default(),
             ))
             .insert(Trajectory);
+
+        for point in hit_points.iter() {
+            let shape = Circle {
+                radius: PLAYER_BALL_RADIUS,
+                center: *point,
+            };
+            commands
+                .spawn_bundle(GeometryBuilder::build_as(
+                    &shape,
+                    DrawMode::Fill(bevy_prototype_lyon::prelude::FillMode::color(Color::RED)),
+                    Transform::default(),
+                ))
+                .insert(Trajectory);
+        }
     }
 }

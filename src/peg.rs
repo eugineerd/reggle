@@ -7,14 +7,8 @@ use bevy_rapier2d::prelude::*;
 use crate::{
     ball::Ball,
     input_state::{GameAction, InputState},
-    GameAssets, GameState,
+    GameAssets, GameState, PEG_RADIUS,
 };
-
-#[derive(Component)]
-struct Peg;
-
-#[derive(Component)]
-pub struct PegToDespawn;
 
 pub struct PegPlugin;
 
@@ -23,22 +17,51 @@ impl Plugin for PegPlugin {
         app.insert_resource(HashSet::<Entity>::new())
             .add_system(spawn_peg_system)
             .add_system(peg_despawn_system.before(peg_hit_system))
-            .add_system(peg_hit_system);
+            .add_system(peg_hit_system)
+            .add_system(peg_hit_reaction_system.after(peg_hit_system));
     }
 }
 
-fn spawn_peg_system(mut commands: Commands, input_state: Res<InputState>) {
+#[derive(Component)]
+struct Peg;
+
+#[derive(Component)]
+pub struct PegToDespawn;
+
+#[derive(Component)]
+pub struct PegHit;
+
+fn spawn_peg_system(
+    mut commands: Commands,
+    input_state: Res<InputState>,
+    game_assets: Res<GameAssets>,
+) {
     if !input_state.just_active(GameAction::SpawnPegs) {
         return;
     }
-    commands.spawn_batch((0..=20).flat_map(|i| {
-        (1..=7).map(move |j| {
-            (
-                Collider::ball(5.0),
-                Transform::from_xyz((10 - i) as f32 * 30.0, -j as f32 * 30.0, 0.0),
-                Name::new("Peg"),
-                Peg,
-            )
+    let image_handle = game_assets.peg_image.clone();
+    commands.spawn_batch((0..=12).flat_map(move |i| {
+        (1..=7).map({
+            let image_handle = image_handle.clone();
+            move |j| {
+                (
+                    Collider::ball(PEG_RADIUS),
+                    Transform::from_xyz(
+                        (12 / 2 - i) as f32 * PEG_RADIUS * 5.0,
+                        -j as f32 * PEG_RADIUS * 5.0,
+                        0.0,
+                    ),
+                    Sprite {
+                        custom_size: Some(Vec2::new(PEG_RADIUS * 2.0, PEG_RADIUS * 2.0)),
+                        ..Default::default()
+                    },
+                    GlobalTransform::default(),
+                    image_handle.clone(),
+                    Visibility::default(),
+                    Name::new("Peg"),
+                    Peg,
+                )
+            }
         })
     }))
 }
@@ -60,11 +83,12 @@ fn peg_hit_system(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
     balls: Query<Entity, With<Ball>>,
-    pegs: Query<Entity, (With<Peg>, Without<PegToDespawn>)>,
-    removed_pegs: Query<Entity, With<PegToDespawn>>,
+    pegs: Query<Entity, (With<Peg>, Without<PegToDespawn>, Without<PegHit>)>,
+    mut currently_in_contact: Local<HashSet<Entity>>,
     audio: Res<Audio>,
     assets: Res<GameAssets>,
 ) {
+    let mut contact_entities = HashSet::new();
     balls.for_each(|entity| {
         for contact_pair in rapier_context.contacts_with(entity) {
             let other_collider = if contact_pair.collider1() == entity {
@@ -72,23 +96,39 @@ fn peg_hit_system(
             } else {
                 contact_pair.collider1()
             };
-
-            if !pegs.contains(other_collider) {
-                if !removed_pegs.contains(other_collider) {
-                    let idx = fastrand::usize(..assets.ball_hit_sound.len());
-                    audio.play(assets.ball_hit_sound[idx].clone());
-                }
+            contact_entities.insert(other_collider);
+            if currently_in_contact.contains(&other_collider) {
                 continue;
             }
-            if let Some(norm) = contact_pair.manifold(0).map(|x| x.normal()) {
-                // Reduces number of `ghost` collisions a bit. See peg_despawn_system note
-                if norm.length() > 0.01 {
-                    game_state.player_score += 1;
-                    commands.entity(other_collider).insert(PegToDespawn);
-                    let idx = fastrand::usize(..assets.peg_hit_sound.len());
-                    audio.play(assets.peg_hit_sound[idx].clone());
-                }
+            if contact_pair
+                .manifold(0)
+                .map_or(true, |m| m.num_points() == 0)
+            {
+                continue;
             }
+            if !pegs.contains(other_collider) {
+                currently_in_contact.insert(other_collider);
+                let idx = fastrand::usize(..assets.ball_hit_sound.len());
+                audio.play(assets.ball_hit_sound[idx].clone());
+                continue;
+            }
+            currently_in_contact.insert(other_collider);
+            game_state.player_score += 1;
+            // commands.entity(other_collider).insert(PegToDespawn);
+            commands.entity(other_collider).insert(PegHit);
+            let idx = fastrand::usize(..assets.peg_hit_sound.len());
+            audio.play(assets.peg_hit_sound[idx].clone());
         }
     });
+    currently_in_contact.retain(|e| contact_entities.contains(e));
+}
+
+fn peg_hit_reaction_system(
+    game_assets: Res<GameAssets>,
+    mut hit_pegs: Query<(&mut Handle<Image>, &mut Sprite), (With<Peg>, Added<PegHit>)>,
+) {
+    for (mut peg_image, mut peg_sprite) in hit_pegs.iter_mut() {
+        *peg_image = game_assets.peg_hit_image.clone();
+        peg_sprite.color = Color::GREEN;
+    }
 }

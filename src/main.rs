@@ -6,7 +6,8 @@ use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-const PLAYER_BALL_RADIUS: f32 = 6.0;
+const PLAYER_BALL_RADIUS: f32 = 11.0;
+const PEG_RADIUS: f32 = 10.0;
 const PIXELS_PER_METER: f32 = 100.0;
 
 mod ball;
@@ -52,6 +53,9 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
         asset_server.load("sfx/peg/impactGlass_medium_003.ogg"),
         asset_server.load("sfx/peg/impactGlass_medium_004.ogg"),
     ];
+
+    assets.peg_image = asset_server.load("sprites/peg.png");
+    assets.peg_hit_image = asset_server.load("sprites/peg_hit.png");
 
     assets.ball_hit_sound = vec![
         asset_server.load("sfx/ball/impactSoft_heavy_001.ogg"),

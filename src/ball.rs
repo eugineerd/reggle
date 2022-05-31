@@ -44,7 +44,7 @@ impl BallPhysicsBundle {
             ccd: Ccd::enabled(),
             transform: Transform::from_translation(translation),
             mass: MassProperties {
-                mass: 1.0,
+                mass: 5.0,
                 ..Default::default()
             },
         }
