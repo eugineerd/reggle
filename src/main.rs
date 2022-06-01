@@ -6,7 +6,7 @@ use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-const PLAYER_BALL_RADIUS: f32 = 11.0;
+const PLAYER_BALL_RADIUS: f32 = 8.0;
 const PEG_RADIUS: f32 = 10.0;
 const PIXELS_PER_METER: f32 = 100.0;
 
@@ -26,6 +26,10 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(AudioPlugin)
         .add_plugin(ShapePlugin)
+        .insert_resource(RapierConfiguration {
+            gravity: Vec2::new(0.0, -9.81 * 20.0),
+            ..Default::default()
+        })
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(
             PIXELS_PER_METER,
         ))

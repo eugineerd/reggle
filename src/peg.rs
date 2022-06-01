@@ -5,7 +5,7 @@ use bevy_kira_audio::Audio;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    ball::{ball_hit_reaction_system, ball_hit_system, HitByBall},
+    ball::{ball_collision_system, ball_hit_reaction_system, Ball, HitByBall},
     input_state::{GameAction, InputState},
     GameAssets, PEG_RADIUS,
 };
@@ -16,8 +16,12 @@ impl Plugin for PegPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(HashSet::<Entity>::new())
             .add_system(spawn_peg_system)
-            .add_system(peg_despawn_system.before(ball_hit_system))
-            .add_system(peg_hit_system.before(ball_hit_reaction_system));
+            .add_system(peg_despawn_system.before(ball_collision_system))
+            .add_system(
+                peg_hit_system
+                    .before(ball_hit_reaction_system)
+                    .after(ball_collision_system),
+            );
     }
 }
 
@@ -68,7 +72,11 @@ fn spawn_peg_system(
 fn peg_despawn_system(
     mut commands: Commands,
     mut pegs: Query<Entity, (With<Peg>, With<PegToDespawn>)>,
+    balls: Query<&Ball>,
 ) {
+    if !balls.is_empty() {
+        return;
+    }
     for entity in pegs.iter_mut() {
         commands.entity(entity).despawn();
     }
@@ -90,6 +98,10 @@ fn peg_hit_system(
         *peg_image = game_assets.peg_hit_image.clone();
         peg_sprite.color = Color::GREEN;
 
-        commands.entity(entity).remove::<HitByBall>().insert(HitPeg);
+        commands
+            .entity(entity)
+            .remove::<HitByBall>()
+            .insert(HitPeg)
+            .insert(PegToDespawn);
     }
 }

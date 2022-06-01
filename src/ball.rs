@@ -9,8 +9,8 @@ pub struct BallPlugin;
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(ball_despawn_system)
-            .add_system(ball_hit_system)
-            .add_system(ball_hit_reaction_system.after(ball_hit_system));
+            .add_system(ball_collision_system)
+            .add_system(ball_hit_reaction_system.after(ball_collision_system));
     }
 }
 
@@ -36,13 +36,13 @@ impl BallPhysicsBundle {
             rigid_body: RigidBody::Dynamic,
             collider: Collider::ball(PLAYER_BALL_RADIUS),
             restitution: Restitution {
-                coefficient: 0.9,
+                coefficient: 0.95,
                 combine_rule: CoefficientCombineRule::Max,
             },
             ccd: Ccd::enabled(),
             transform: Transform::from_translation(translation),
             mass: MassProperties {
-                mass: 5.0,
+                mass: 1.0,
                 ..Default::default()
             },
         }
@@ -94,7 +94,7 @@ fn ball_despawn_system(mut commands: Commands, balls: Query<(Entity, &Transform)
     }
 }
 
-pub fn ball_hit_system(
+pub fn ball_collision_system(
     mut commands: Commands,
     rapier_context: Res<RapierContext>,
     balls: Query<Entity, With<Ball>>,

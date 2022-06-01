@@ -50,7 +50,7 @@ pub struct TrajectoryWorld {
 }
 
 impl TrajectoryWorld {
-    fn new(scale: f32, scaled_shape_subdivision: u32) -> Self {
+    fn new(scale: f32, scaled_shape_subdivision: u32, gravity: Vec2) -> Self {
         TrajectoryWorld {
             scale,
             scaled_shape_subdivision,
@@ -64,7 +64,7 @@ impl TrajectoryWorld {
             impulse_joint_set: ImpulseJointSet::new(),
             multibody_joint_set: MultibodyJointSet::new(),
             ccd_solver: CCDSolver::new(),
-            gravity: na::Vector2::new(0.0, -9.81 * 10.0 / scale),
+            gravity: gravity.into(),
         }
     }
 
@@ -183,6 +183,7 @@ pub fn init_trajectory_world(mut commands: Commands, rapier_config: Res<RapierCo
     commands.insert_resource(TrajectoryWorld::new(
         PIXELS_PER_METER,
         rapier_config.scaled_shape_subdivision,
+        rapier_config.gravity / PIXELS_PER_METER,
     ));
 }
 
