@@ -84,13 +84,16 @@ fn setup_level(mut commands: Commands) {
     commands
         .spawn()
         .insert(Collider::cuboid(500.0, 20.0))
-        .insert(Transform::from_xyz(0.0, 300.0, 0.0));
+        .insert(Transform::from_xyz(0.0, 300.0, 0.0))
+        .insert(GlobalTransform::default());
     commands
         .spawn()
         .insert(Collider::cuboid(20.0, 500.0))
-        .insert(Transform::from_xyz(-400.0, 0.0, 0.0));
+        .insert(Transform::from_xyz(-400.0, 0.0, 0.0))
+        .insert(GlobalTransform::default());
     commands
         .spawn()
         .insert(Collider::cuboid(20.0, 500.0))
-        .insert(Transform::from_xyz(400.0, 0.0, 0.0));
+        .insert(Transform::from_xyz(400.0, 0.0, 0.0))
+        .insert(GlobalTransform::default());
 }
