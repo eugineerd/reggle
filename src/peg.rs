@@ -98,10 +98,6 @@ fn peg_hit_system(
         *peg_image = game_assets.peg_hit_image.clone();
         peg_sprite.color = Color::GREEN;
 
-        commands
-            .entity(entity)
-            .remove::<HitByBall>()
-            .insert(HitPeg)
-            .insert(PegToDespawn);
+        commands.entity(entity).insert(HitPeg).insert(PegToDespawn);
     }
 }

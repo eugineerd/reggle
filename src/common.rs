@@ -9,6 +9,7 @@ pub struct GameAssets {
     pub ball_hit_sound: Vec<Handle<AudioSource>>,
     pub ball_image: Handle<Image>,
     pub launcher_image: Handle<Image>,
+    pub background_image: Handle<Image>,
 }
 
 #[derive(Default)]

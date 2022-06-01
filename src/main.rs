@@ -26,13 +26,14 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(AudioPlugin)
         .add_plugin(ShapePlugin)
-        .insert_resource(RapierConfiguration {
-            gravity: Vec2::new(0.0, -9.81 * 20.0),
-            ..Default::default()
-        })
+        .insert_resource(ClearColor(Color::BLACK))
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(
             PIXELS_PER_METER,
         ))
+        .insert_resource(RapierConfiguration {
+            gravity: Vec2::new(0.0, -9.81 * 24.0),
+            ..Default::default()
+        })
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(debug::DebugPlugin)
         .add_plugin(input_state::InputStatePlugin)
@@ -44,7 +45,7 @@ fn main() {
         .insert_resource(GameAssets::default())
         .insert_resource(GameState::default())
         .add_startup_system(load_assets)
-        .add_startup_system(setup_graphics)
+        .add_startup_system(setup_graphics.after(load_assets))
         .add_startup_system(setup_level)
         .run();
 }
@@ -70,10 +71,16 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
 
     assets.ball_image = asset_server.load("sprites/ball.png");
     assets.launcher_image = asset_server.load("sprites/launcher.png");
+    assets.background_image = asset_server.load("sprites/background.png");
 }
 
-fn setup_graphics(mut commands: Commands) {
+fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(SpriteBundle {
+        texture: game_assets.background_image.clone(),
+        transform: Transform::from_xyz(0.0, 0.0, -0.01),
+        ..Default::default()
+    });
 }
 
 fn setup_level(mut commands: Commands) {

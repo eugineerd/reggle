@@ -99,6 +99,7 @@ impl TrajectoryWorld {
         collider: &Collider,
         restitution: &Restitution,
         mut max_collisions: usize,
+        max_trajectory_points: usize,
     ) -> (Vec<Vec2>, Vec<Vec2>) {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation((start_pos / self.scale).into())
@@ -113,7 +114,7 @@ impl TrajectoryWorld {
             .restitution_combine_rule(bevy_rapier2d::rapier::prelude::CoefficientCombineRule::Max)
             .build();
         let body_handle = self.rigid_body_set.insert(rigid_body);
-        let ball_collider_handle =
+        let body_collider_handle =
             self.collider_set
                 .insert_with_parent(collider, body_handle, &mut self.rigid_body_set);
 
@@ -124,10 +125,10 @@ impl TrajectoryWorld {
         let physics_hooks = ();
         let event_handler = ();
 
-        let mut trajectory_positions: Vec<bevy::prelude::Vec2> = Vec::with_capacity(300);
-        let mut hit_positions: Vec<bevy::prelude::Vec2> = Vec::new();
+        let mut trajectory_positions: Vec<Vec2> = Vec::with_capacity(max_trajectory_points);
+        let mut collision_positions: Vec<Vec2> = Vec::new();
         let mut encountered_colliders = HashSet::new();
-        for _ in 0..300 {
+        for _ in 0..max_trajectory_points {
             self.physics_pipeline.step(
                 &self.gravity,
                 &integration_parameters,
@@ -147,8 +148,8 @@ impl TrajectoryWorld {
             let position = (*body.translation() * self.scale).into();
 
             trajectory_positions.push(position);
-            if let Some(pair) = self.narrow_phase.contacts_with(ball_collider_handle).next() {
-                let other_collider = if pair.collider1 != ball_collider_handle {
+            if let Some(pair) = self.narrow_phase.contacts_with(body_collider_handle).next() {
+                let other_collider = if pair.collider1 != body_collider_handle {
                     pair.collider1
                 } else {
                     pair.collider2
@@ -159,7 +160,7 @@ impl TrajectoryWorld {
                     continue;
                 }
                 encountered_colliders.insert(other_collider);
-                hit_positions.push(position);
+                collision_positions.push(position);
                 max_collisions -= 1;
                 if max_collisions == 0 {
                     break;
@@ -175,7 +176,7 @@ impl TrajectoryWorld {
             true,
         );
 
-        (trajectory_positions, hit_positions)
+        (trajectory_positions, collision_positions)
     }
 }
 
@@ -214,16 +215,19 @@ fn draw_trajectory_system(
     for line in lines.iter() {
         commands.entity(line).despawn();
     }
-    // Let else and if let chains can't come soon enough...
     if let Ok((launcher_tr, launcher)) = launcher.get_single() {
+        if !launcher.draw_trajectory {
+            return;
+        }
         let ball_bundle = BallPhysicsBundle::new(launcher_tr.translation);
         let start_pos = launcher_tr.translation.truncate();
-        let (trajectory_points, hit_points) = trajectory_world.simulate_body_trajectory(
+        let (trajectory_points, collision_points) = trajectory_world.simulate_body_trajectory(
             start_pos,
             launcher.get_impulse(),
             &ball_bundle.collider,
             &ball_bundle.restitution,
-            2,
+            1,
+            200,
         );
 
         let mut path_builder = PathBuilder::new();
@@ -236,12 +240,12 @@ fn draw_trajectory_system(
         commands
             .spawn_bundle(GeometryBuilder::build_as(
                 &line,
-                DrawMode::Stroke(StrokeMode::new(Color::GREEN, 3.0)),
+                DrawMode::Stroke(StrokeMode::new(Color::WHITE, 2.0)),
                 Transform::default(),
             ))
             .insert(Trajectory);
 
-        for point in hit_points.iter() {
+        for point in collision_points.iter() {
             let shape = Circle {
                 radius: PLAYER_BALL_RADIUS,
                 center: *point,
