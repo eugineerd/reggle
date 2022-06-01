@@ -96,7 +96,7 @@ fn peg_hit_system(
         audio.play(game_assets.peg_hit_sound[idx].clone());
 
         *peg_image = game_assets.peg_hit_image.clone();
-        peg_sprite.color = Color::GREEN;
+        peg_sprite.color = Color::rgb(0.5, 0.6, 1.0);
 
         commands.entity(entity).insert(HitPeg).insert(PegToDespawn);
     }
