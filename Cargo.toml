@@ -22,7 +22,6 @@ default = [
     "bevy/wayland",
     "bevy_kira_audio/ogg",
 ]
-
 dev = ["bevy/dynamic"]
 
 # Enable only a small amount of optimization in debug mode
@@ -32,3 +31,6 @@ opt-level = 1
 # Enable high optimizations for dependencies (incl. Bevy), but not for our code:
 [profile.dev.package."*"]
 opt-level = 3
+
+# [profile.release]
+# lto = "thin"
