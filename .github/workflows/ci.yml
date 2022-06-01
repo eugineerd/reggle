@@ -27,10 +27,12 @@ jobs:
           override: true
           profile: minimal
           components: rustfmt, clippy
+      - name: Install bevy dependecies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
       - name: Rustfmt
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features
+        run: cargo clippy --workspace --all-targets --all-features --no-deps
     
   build-native:
     needs: lints
@@ -53,6 +55,9 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - name: Install bevy dependecies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+        if: runner.os == 'linux'
       - name: Build
         run: cargo build --verbose
 
@@ -74,6 +79,8 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - name: Install bevy dependecies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
       - name: Download trunk
         run: wget -qO- https://github.com/thedodd/trunk/releases/download/v0.15.0/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
       - name: Build
