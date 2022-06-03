@@ -13,6 +13,19 @@ pub struct GameAssets {
 }
 
 #[derive(Default)]
-pub struct GameState {
+pub struct GameStats {
     pub player_score: usize,
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+pub enum GameState {
+    Menu,
+    Ingame,
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+pub enum IngameState {
+    Launcher,
+    Ball,
+    Cleanup,
 }

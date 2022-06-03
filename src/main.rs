@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
@@ -23,7 +24,11 @@ use common::*;
 
 fn main() {
     App::new()
+        .add_state(GameState::Ingame)
+        .add_state(IngameState::Launcher)
         .add_plugins(DefaultPlugins)
+        .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(FrameTimeDiagnosticsPlugin)
         .add_plugin(AudioPlugin)
         .add_plugin(ShapePlugin)
         .insert_resource(ClearColor(Color::BLACK))
@@ -34,7 +39,7 @@ fn main() {
             gravity: Vec2::new(0.0, -9.81 * 24.0),
             ..Default::default()
         })
-        .add_plugin(RapierDebugRenderPlugin::default())
+        // .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(debug::DebugPlugin)
         .add_plugin(input_state::InputStatePlugin)
         .add_plugin(ball::BallPlugin)
@@ -43,7 +48,7 @@ fn main() {
         .add_plugin(trajectory::TrajectoryPlugin)
         .add_plugin(ui::UiPlugin)
         .insert_resource(GameAssets::default())
-        .insert_resource(GameState::default())
+        .insert_resource(GameStats::default())
         .add_startup_system(load_assets)
         .add_startup_system(setup_graphics.after(load_assets))
         .add_startup_system(setup_level)

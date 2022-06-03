@@ -2,8 +2,9 @@ use bevy::prelude::*;
 use bevy_inspector_egui::Inspectable;
 use bevy_rapier2d::prelude::Velocity;
 
+use crate::common::{GameState, IngameState};
 use crate::{
-    ball::{Ball, BallBundle},
+    ball::BallBundle,
     common::GameAssets,
     input_state::{GameAction, InputState},
     load_assets,
@@ -13,16 +14,22 @@ pub struct LauncherPlugin;
 
 impl Plugin for LauncherPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_ball_launcher.after(load_assets))
-            .add_system(launcher_control_system)
-            .add_system(ball_launcher_system);
+        app.add_system_set(
+            SystemSet::on_enter(GameState::Ingame)
+                .with_system(setup_ball_launcher.after(load_assets)),
+        )
+        .add_system_set(
+            SystemSet::on_update(GameState::Ingame).with_system(launcher_control_system),
+        )
+        .add_system_set(
+            SystemSet::on_update(IngameState::Launcher).with_system(ball_launcher_system),
+        );
     }
 }
 
 #[derive(Component, Inspectable)]
 pub struct Launcher {
     pub direction: Vec2,
-    pub draw_trajectory: bool,
     pub power: f32,
 }
 
@@ -45,7 +52,6 @@ fn setup_ball_launcher(mut commands: Commands, game_assets: Res<GameAssets>) {
         .insert(Transform::from_xyz(0.0, 150.0, 1.0))
         .insert(Launcher {
             direction: Vec2::ZERO,
-            draw_trajectory: true,
             power: 200.0,
         });
 }
@@ -68,22 +74,17 @@ fn ball_launcher_system(
     mut commands: Commands,
     input_state: Res<InputState>,
     game_assets: Res<GameAssets>,
-    mut launcher: Query<(&Transform, &mut Launcher)>,
-    balls: Query<&Ball>,
+    mut state: ResMut<State<IngameState>>,
+    launcher: Query<(&Transform, &Launcher)>,
 ) {
-    let (tr, mut launcher) = launcher.single_mut();
-    if !balls.is_empty() {
-        launcher.draw_trajectory = false;
-        return;
+    if input_state.just_active(GameAction::Shoot) {
+        state.set(IngameState::Ball).unwrap();
+        let (tr, launcher) = launcher.single();
+        commands
+            .spawn_bundle(BallBundle::new(tr.translation, &game_assets))
+            .insert(Velocity {
+                linvel: launcher.get_impulse(),
+                ..Default::default()
+            });
     }
-    launcher.draw_trajectory = true;
-    if !input_state.just_active(GameAction::Shoot) {
-        return;
-    }
-    commands
-        .spawn_bundle(BallBundle::new(tr.translation, &game_assets))
-        .insert(Velocity {
-            linvel: launcher.get_impulse(),
-            ..Default::default()
-        });
 }

@@ -1,35 +1,49 @@
+use bevy::ecs::schedule::ShouldRun;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy::utils::HashSet;
-use bevy_prototype_lyon::prelude::DrawMode;
-use bevy_prototype_lyon::prelude::GeometryBuilder;
-use bevy_prototype_lyon::prelude::PathBuilder;
-use bevy_prototype_lyon::prelude::StrokeMode;
+use bevy_prototype_lyon::prelude::{DrawMode, GeometryBuilder, PathBuilder, StrokeMode};
 use bevy_prototype_lyon::shapes::Circle;
 use bevy_rapier2d::na;
-use bevy_rapier2d::prelude::*;
-use bevy_rapier2d::rapier::prelude::ColliderHandle;
-use bevy_rapier2d::rapier::prelude::IntegrationParameters;
-use bevy_rapier2d::rapier::prelude::RigidBodyBuilder;
+use bevy_rapier2d::prelude::{Collider, RapierConfiguration, Restitution, RigidBody};
 use bevy_rapier2d::rapier::prelude::{
-    BroadPhase, CCDSolver, ColliderBuilder, ColliderSet, ImpulseJointSet, IslandManager,
-    MultibodyJointSet, NarrowPhase, PhysicsPipeline, RigidBodySet,
+    BroadPhase, CCDSolver, ColliderBuilder, ColliderHandle, ColliderSet, ImpulseJointSet,
+    IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsPipeline,
+    RigidBodyBuilder, RigidBodySet,
 };
 
-use crate::ball::Ball;
 use crate::ball::BallPhysicsBundle;
+use crate::common::{GameState, IngameState};
 use crate::launcher::Launcher;
-use crate::peg::PegToDespawn;
 use crate::PIXELS_PER_METER;
 use crate::PLAYER_BALL_RADIUS;
 
 pub struct TrajectoryPlugin;
 
+// Hack until stageless lands
+pub enum TrajectoryWorldActive {
+    Yes,
+    No,
+}
+
 impl Plugin for TrajectoryPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(init_trajectory_world)
-            .add_system(sync_trajectory_world_system)
-            .add_system(draw_trajectory_system);
+        app.insert_resource(TrajectoryWorldActive::No)
+            .add_system_set(
+                SystemSet::on_enter(GameState::Ingame).with_system(init_trajectory_world),
+            )
+            .add_system_set(
+                SystemSet::on_update(IngameState::Launcher)
+                    .with_system(draw_trajectory_system)
+                    .with_system(despawn_trajectory_line.before(draw_trajectory_system)),
+            )
+            .add_system_set(
+                SystemSet::on_exit(IngameState::Launcher).with_system(despawn_trajectory_line),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                sync_colliders_system.with_run_criteria(should_sync),
+            );
     }
 }
 
@@ -47,6 +61,9 @@ pub struct TrajectoryWorld {
     narrow_phase: NarrowPhase,
     ccd_solver: CCDSolver,
     gravity: na::Vector2<f32>,
+
+    trajectory_points: Vec<Vec2>,
+    collision_points: Vec<Vec2>,
 }
 
 impl TrajectoryWorld {
@@ -65,6 +82,9 @@ impl TrajectoryWorld {
             multibody_joint_set: MultibodyJointSet::new(),
             ccd_solver: CCDSolver::new(),
             gravity: gravity.into(),
+
+            trajectory_points: Vec::new(),
+            collision_points: Vec::new(),
         }
     }
 
@@ -92,6 +112,26 @@ impl TrajectoryWorld {
         self.colliders.insert(entity, handle);
     }
 
+    fn update_collider(&mut self, entity: Entity, collider: &Collider) {
+        if let Some(handle) = self.colliders.get(&entity) {
+            if let Some(rapier_collider) = self.collider_set.get_mut(*handle) {
+                let scaled_shape = collider
+                    .as_unscaled_typed_shape()
+                    .raw_scale_by(Vec2::ONE / self.scale, self.scaled_shape_subdivision)
+                    .unwrap();
+                rapier_collider.set_shape(scaled_shape);
+            }
+        };
+    }
+
+    fn move_collider(&mut self, entity: Entity, translation: Vec2) {
+        if let Some(handle) = self.colliders.get(&entity) {
+            if let Some(rapier_collider) = self.collider_set.get_mut(*handle) {
+                rapier_collider.set_translation((translation / self.scale).into());
+            }
+        };
+    }
+
     fn simulate_body_trajectory(
         &mut self,
         start_pos: Vec2,
@@ -100,7 +140,7 @@ impl TrajectoryWorld {
         restitution: &Restitution,
         mut max_collisions: usize,
         max_trajectory_points: usize,
-    ) -> (Vec<Vec2>, Vec<Vec2>) {
+    ) -> (&[Vec2], &[Vec2]) {
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation((start_pos / self.scale).into())
             .linvel((linvel / self.scale).into())
@@ -125,8 +165,8 @@ impl TrajectoryWorld {
         let physics_hooks = ();
         let event_handler = ();
 
-        let mut trajectory_positions: Vec<Vec2> = Vec::with_capacity(max_trajectory_points);
-        let mut collision_positions: Vec<Vec2> = Vec::new();
+        self.trajectory_points.clear();
+        self.collision_points.clear();
         let mut encountered_colliders = HashSet::new();
         for _ in 0..max_trajectory_points {
             self.physics_pipeline.step(
@@ -147,7 +187,7 @@ impl TrajectoryWorld {
             let body = &self.rigid_body_set[body_handle];
             let position = (*body.translation() * self.scale).into();
 
-            trajectory_positions.push(position);
+            self.trajectory_points.push(position);
             if let Some(pair) = self.narrow_phase.contacts_with(body_collider_handle).next() {
                 let other_collider = if pair.collider1 != body_collider_handle {
                     pair.collider1
@@ -160,7 +200,7 @@ impl TrajectoryWorld {
                     continue;
                 }
                 encountered_colliders.insert(other_collider);
-                collision_positions.push(position);
+                self.collision_points.push(position);
                 max_collisions -= 1;
                 if max_collisions == 0 {
                     break;
@@ -176,49 +216,71 @@ impl TrajectoryWorld {
             true,
         );
 
-        (trajectory_positions, collision_positions)
+        (&self.trajectory_points, &self.collision_points)
     }
 }
 
-pub fn init_trajectory_world(mut commands: Commands, rapier_config: Res<RapierConfiguration>) {
+pub fn init_trajectory_world(
+    mut commands: Commands,
+    rapier_config: Res<RapierConfiguration>,
+    mut trajectory_world_active: ResMut<TrajectoryWorldActive>,
+) {
     commands.insert_resource(TrajectoryWorld::new(
         PIXELS_PER_METER,
         rapier_config.scaled_shape_subdivision,
         rapier_config.gravity / PIXELS_PER_METER,
     ));
+    // Hack until stageless lands
+    *trajectory_world_active = TrajectoryWorldActive::Yes;
 }
 
-// TODO: sync changed colliders and generalize removed pegs to any collider
-pub fn sync_trajectory_world_system(
-    mut trajectory_world: ResMut<TrajectoryWorld>,
-    added_colliders: Query<(Entity, &Transform, &Collider), (Added<Collider>, Without<Ball>)>,
-    // changed_colliders: Query<(Entity, &Collider), (Changed<Collider>, Without<Ball>)>,
-    removed_pegs: Query<Entity, (Without<Ball>, With<PegToDespawn>)>,
-) {
-    for entity in removed_pegs.iter() {
-        trajectory_world.remove_collider(entity);
+// Hack until stageless lands
+pub fn should_sync(trajectory_world_active: Res<TrajectoryWorldActive>) -> ShouldRun {
+    match *trajectory_world_active {
+        TrajectoryWorldActive::Yes => ShouldRun::Yes,
+        TrajectoryWorldActive::No => ShouldRun::No,
     }
-    for (entity, transform, collider) in added_colliders.iter() {
+}
+
+pub fn sync_colliders_system(
+    mut trajectory_world: ResMut<TrajectoryWorld>,
+    added_colliders: Query<(Entity, &Transform, &Collider), (Added<Collider>, Without<RigidBody>)>,
+    changed_colliders: Query<(Entity, &Collider), (Changed<Collider>, Without<RigidBody>)>,
+    moved_colliders: Query<
+        (Entity, &Transform),
+        (Changed<Transform>, With<Collider>, Without<RigidBody>),
+    >,
+    removed_colliders: RemovedComponents<Collider>,
+) {
+    changed_colliders.for_each(|(entity, collider)| {
+        trajectory_world.update_collider(entity, collider);
+    });
+    moved_colliders.for_each(|(entity, transform)| {
+        trajectory_world.move_collider(entity, transform.translation.truncate());
+    });
+    added_colliders.for_each(|(entity, transform, collider)| {
         trajectory_world.add_collider(entity, collider, transform.translation.truncate());
+    });
+    for entity in removed_colliders.iter() {
+        trajectory_world.remove_collider(entity);
     }
 }
 
 #[derive(Component)]
-struct Trajectory;
+pub struct TrajectoryLine;
+
+fn despawn_trajectory_line(mut commands: Commands, lines: Query<Entity, With<TrajectoryLine>>) {
+    for line in lines.iter() {
+        commands.entity(line).despawn();
+    }
+}
 
 fn draw_trajectory_system(
     mut commands: Commands,
     mut trajectory_world: ResMut<TrajectoryWorld>,
     launcher: Query<(&Transform, &Launcher)>,
-    lines: Query<Entity, With<Trajectory>>,
 ) {
-    for line in lines.iter() {
-        commands.entity(line).despawn();
-    }
     if let Ok((launcher_tr, launcher)) = launcher.get_single() {
-        if !launcher.draw_trajectory {
-            return;
-        }
         let ball_bundle = BallPhysicsBundle::new(launcher_tr.translation);
         let start_pos = launcher_tr.translation.truncate();
         let (trajectory_points, collision_points) = trajectory_world.simulate_body_trajectory(
@@ -233,7 +295,7 @@ fn draw_trajectory_system(
         let mut path_builder = PathBuilder::new();
         path_builder.move_to(start_pos);
         for point in trajectory_points {
-            path_builder.line_to(point);
+            path_builder.line_to(*point);
         }
         let line = path_builder.build();
 
@@ -243,7 +305,7 @@ fn draw_trajectory_system(
                 DrawMode::Stroke(StrokeMode::new(Color::WHITE, 2.0)),
                 Transform::default(),
             ))
-            .insert(Trajectory);
+            .insert(TrajectoryLine);
 
         for point in collision_points.iter() {
             let shape = Circle {
@@ -256,7 +318,7 @@ fn draw_trajectory_system(
                     DrawMode::Fill(bevy_prototype_lyon::prelude::FillMode::color(Color::RED)),
                     Transform::default(),
                 ))
-                .insert(Trajectory);
+                .insert(TrajectoryLine);
         }
     }
 }

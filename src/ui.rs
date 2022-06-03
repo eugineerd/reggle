@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::GameState;
+use crate::GameStats;
 
 pub struct UiPlugin;
 
@@ -34,7 +34,7 @@ fn setup_ui(mut commands: Commands) {
         .insert(ScoreUi);
 }
 
-fn update_score_system(game_state: Res<GameState>, mut score_ui: Query<&mut Text, With<ScoreUi>>) {
+fn update_score_system(game_state: Res<GameStats>, mut score_ui: Query<&mut Text, With<ScoreUi>>) {
     if let Ok(mut text) = score_ui.get_single_mut() {
         text.sections[0].value = game_state.player_score.to_string()
     }

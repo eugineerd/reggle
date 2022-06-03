@@ -1,11 +1,12 @@
-use std::collections::HashSet;
-
 use bevy::prelude::*;
+use bevy::utils::HashSet;
 use bevy_kira_audio::Audio;
 use bevy_rapier2d::prelude::*;
+use std::collections::VecDeque;
 
+use crate::ball::BallCollisionEvent;
+use crate::common::{GameState, IngameState};
 use crate::{
-    ball::{ball_collision_system, ball_hit_reaction_system, Ball, HitByBall},
     input_state::{GameAction, InputState},
     GameAssets, PEG_RADIUS,
 };
@@ -14,13 +15,11 @@ pub struct PegPlugin;
 
 impl Plugin for PegPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(HashSet::<Entity>::new())
-            .add_system(spawn_peg_system)
-            .add_system(peg_despawn_system.before(ball_collision_system))
-            .add_system(
-                peg_hit_system
-                    .before(ball_hit_reaction_system)
-                    .after(ball_collision_system),
+        app.insert_resource(PegsToDespawn::default())
+            .add_system_set(SystemSet::on_update(GameState::Ingame).with_system(spawn_peg_system))
+            .add_system_set(SystemSet::on_update(IngameState::Ball).with_system(peg_hit_system))
+            .add_system_set(
+                SystemSet::on_update(IngameState::Cleanup).with_system(peg_despawn_system),
             );
     }
 }
@@ -29,10 +28,23 @@ impl Plugin for PegPlugin {
 pub struct Peg;
 
 #[derive(Component)]
-pub struct PegToDespawn;
-
-#[derive(Component)]
 pub struct HitPeg;
+
+pub struct PegsToDespawn {
+    set: HashSet<Entity>,
+    despawn_timer: Timer,
+    queue: VecDeque<Entity>,
+}
+
+impl Default for PegsToDespawn {
+    fn default() -> Self {
+        Self {
+            set: Default::default(),
+            despawn_timer: Timer::from_seconds(0.1, true),
+            queue: Default::default(),
+        }
+    }
+}
 
 fn spawn_peg_system(
     mut commands: Commands,
@@ -71,33 +83,43 @@ fn spawn_peg_system(
 
 fn peg_despawn_system(
     mut commands: Commands,
-    mut pegs: Query<Entity, (With<Peg>, With<PegToDespawn>)>,
-    balls: Query<&Ball>,
+    time: Res<Time>,
+    mut state: ResMut<State<IngameState>>,
+    mut pegs_to_despawn: ResMut<PegsToDespawn>,
 ) {
-    if !balls.is_empty() {
-        return;
-    }
-    for entity in pegs.iter_mut() {
-        commands.entity(entity).despawn();
+    pegs_to_despawn.despawn_timer.tick(time.delta());
+    if pegs_to_despawn.despawn_timer.just_finished() {
+        if let Some(peg) = pegs_to_despawn.queue.front() {
+            commands.entity(*peg).despawn();
+            pegs_to_despawn.queue.pop_front();
+        } else {
+            pegs_to_despawn.despawn_timer.reset();
+            pegs_to_despawn.queue.clear();
+            pegs_to_despawn.set.clear();
+            state.set(IngameState::Launcher).unwrap();
+        }
     }
 }
 
 fn peg_hit_system(
-    mut commands: Commands,
+    mut hit_by_ball: EventReader<BallCollisionEvent>,
     game_assets: Res<GameAssets>,
     audio: Res<Audio>,
-    mut hit_pegs: Query<
-        (Entity, &mut Handle<Image>, &mut Sprite),
-        (With<Peg>, Without<HitPeg>, Added<HitByBall>),
-    >,
+    mut pegs: Query<(Entity, &mut Handle<Image>, &mut Sprite), With<Peg>>,
+    mut pegs_to_despawn: ResMut<PegsToDespawn>,
 ) {
-    for (entity, mut peg_image, mut peg_sprite) in hit_pegs.iter_mut() {
-        let idx = fastrand::usize(..game_assets.peg_hit_sound.len());
-        audio.play(game_assets.peg_hit_sound[idx].clone());
+    for event in hit_by_ball.iter() {
+        if let Ok((entity, mut peg_image, mut peg_sprite)) = pegs.get_mut(event.0) {
+            let idx = fastrand::usize(..game_assets.peg_hit_sound.len());
+            audio.play(game_assets.peg_hit_sound[idx].clone());
 
-        *peg_image = game_assets.peg_hit_image.clone();
-        peg_sprite.color = Color::rgb(0.5, 0.6, 1.0);
+            *peg_image = game_assets.peg_hit_image.clone();
+            peg_sprite.color = Color::rgb(0.5, 0.6, 1.0);
 
-        commands.entity(entity).insert(HitPeg).insert(PegToDespawn);
+            if !pegs_to_despawn.set.contains(&entity) {
+                pegs_to_despawn.set.insert(entity);
+                pegs_to_despawn.queue.push_back(entity);
+            }
+        }
     }
 }
