@@ -4,6 +4,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::common::IngameState;
 use crate::{common::GameAssets, PLAYER_BALL_RADIUS};
+use crate::{ARENA_FLOOR, ARENA_WALL};
 
 pub struct BallPlugin;
 
@@ -100,7 +101,7 @@ fn ball_despawn_system(
         return;
     }
     for (entity, tr) in balls.iter() {
-        if tr.translation.x.abs() > 400.0 || tr.translation.y.abs() > 400.0 {
+        if tr.translation.x.abs() > ARENA_WALL || tr.translation.y < ARENA_FLOOR {
             commands.entity(entity).despawn()
         }
     }

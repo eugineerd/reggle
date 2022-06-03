@@ -8,8 +8,12 @@ use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 const PLAYER_BALL_RADIUS: f32 = 8.0;
+const LAUNCHER_BASE_POWER: f32 = 300.0;
 const PEG_RADIUS: f32 = 10.0;
 const PIXELS_PER_METER: f32 = 100.0;
+const ARENA_CEILING: f32 = 245.0;
+const ARENA_FLOOR: f32 = -365.0;
+const ARENA_WALL: f32 = 435.0;
 
 mod ball;
 mod common;
@@ -39,7 +43,7 @@ fn main() {
             gravity: Vec2::new(0.0, -9.81 * 24.0),
             ..Default::default()
         })
-        // .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(debug::DebugPlugin)
         .add_plugin(input_state::InputStatePlugin)
         .add_plugin(ball::BallPlugin)
@@ -89,23 +93,19 @@ fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
 }
 
 fn setup_level(mut commands: Commands) {
-    // commands
-    //     .spawn()
-    //     .insert(Collider::cuboid(500.0, 20.0))
-    //     .insert(Transform::from_xyz(0.0, -300.0, 0.0));
     commands
         .spawn()
-        .insert(Collider::cuboid(500.0, 20.0))
-        .insert(Transform::from_xyz(0.0, 300.0, 0.0))
+        .insert(Collider::cuboid(500.0, 10.0))
+        .insert(Transform::from_xyz(0.0, ARENA_CEILING + 10.0 / 2.0, 0.0))
         .insert(GlobalTransform::default());
     commands
         .spawn()
-        .insert(Collider::cuboid(20.0, 500.0))
-        .insert(Transform::from_xyz(-400.0, 0.0, 0.0))
+        .insert(Collider::cuboid(10.0, 500.0))
+        .insert(Transform::from_xyz(-(ARENA_WALL + 10.0 / 2.0), 0.0, 0.0))
         .insert(GlobalTransform::default());
     commands
         .spawn()
-        .insert(Collider::cuboid(20.0, 500.0))
-        .insert(Transform::from_xyz(400.0, 0.0, 0.0))
+        .insert(Collider::cuboid(10.0, 500.0))
+        .insert(Transform::from_xyz(ARENA_WALL + 10.0 / 2.0, 0.0, 0.0))
         .insert(GlobalTransform::default());
 }

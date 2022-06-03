@@ -3,6 +3,7 @@ use bevy_inspector_egui::Inspectable;
 use bevy_rapier2d::prelude::Velocity;
 
 use crate::common::{GameState, IngameState};
+use crate::LAUNCHER_BASE_POWER;
 use crate::{
     ball::BallBundle,
     common::GameAssets,
@@ -52,7 +53,7 @@ fn setup_ball_launcher(mut commands: Commands, game_assets: Res<GameAssets>) {
         .insert(Transform::from_xyz(0.0, 150.0, 1.0))
         .insert(Launcher {
             direction: Vec2::ZERO,
-            power: 200.0,
+            power: LAUNCHER_BASE_POWER,
         });
 }
 
