@@ -110,13 +110,11 @@ fn peg_hit_system(
 ) {
     for event in hit_by_ball.iter() {
         if let Ok((entity, mut peg_image, mut peg_sprite)) = pegs.get_mut(event.0) {
-            let idx = fastrand::usize(..game_assets.peg_hit_sound.len());
-            audio.play(game_assets.peg_hit_sound[idx].clone());
-
-            *peg_image = game_assets.peg_hit_image.clone();
-            peg_sprite.color = Color::rgb(0.5, 0.6, 1.0);
-
             if !pegs_to_despawn.set.contains(&entity) {
+                *peg_image = game_assets.peg_hit_image.clone();
+                peg_sprite.color = Color::rgb(0.5, 0.6, 1.0);
+                let idx = fastrand::usize(..game_assets.peg_hit_sound.len());
+                audio.play(game_assets.peg_hit_sound[idx].clone());
                 pegs_to_despawn.set.insert(entity);
                 pegs_to_despawn.queue.push_back(entity);
             }
