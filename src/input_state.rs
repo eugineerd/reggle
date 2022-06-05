@@ -12,6 +12,7 @@ impl Plugin for InputStatePlugin {
 #[derive(Default)]
 pub struct InputState {
     pub cursor_position: Vec2,
+    lock_input: bool,
     active_actions: HashSet<GameAction>,
     just_active_actions: HashSet<GameAction>,
 }
@@ -50,6 +51,14 @@ fn input_state_system(
             let game_y = e.position.y - window.height() / 2.0;
             input_state.cursor_position = Vec2::new(game_x, game_y)
         }
+    }
+
+    if keys.just_pressed(KeyCode::Space) {
+        input_state.lock_input = !input_state.lock_input
+    }
+
+    if input_state.lock_input {
+        return;
     }
 
     if keys.pressed(KeyCode::LControl) {
