@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_inspector_egui::Inspectable;
 use bevy_kira_audio::AudioSource;
 
 #[derive(Default)]
@@ -12,7 +13,7 @@ pub struct GameAssets {
     pub background_image: Handle<Image>,
 }
 
-#[derive(Default)]
+#[derive(Default, Inspectable)]
 pub struct GameStats {
     pub player_score: usize,
 }
@@ -25,6 +26,7 @@ pub enum GameState {
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum IngameState {
+    AllocatePegs,
     Launcher,
     Ball,
     Cleanup,

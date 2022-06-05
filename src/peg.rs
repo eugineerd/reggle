@@ -6,10 +6,7 @@ use std::collections::VecDeque;
 
 use crate::ball::BallCollisionEvent;
 use crate::common::{GameState, IngameState};
-use crate::{
-    input_state::{GameAction, InputState},
-    GameAssets, PEG_RADIUS,
-};
+use crate::{GameAssets, PEG_RADIUS};
 
 pub struct PegPlugin;
 
@@ -19,10 +16,10 @@ impl Plugin for PegPlugin {
             .insert_resource(PegConfig {
                 target_pegs_count: 20,
             })
+            .add_system_set(SystemSet::on_enter(GameState::Ingame).with_system(spawn_peg_system))
             .add_system_set(
-                SystemSet::on_update(GameState::Ingame)
-                    .with_system(spawn_peg_system)
-                    .with_system(select_target_pegs_system),
+                SystemSet::on_update(IngameState::AllocatePegs)
+                    .with_system(select_target_pegs_system.after(spawn_peg_system)),
             )
             .add_system_set(SystemSet::on_update(IngameState::Ball).with_system(peg_hit_system))
             .add_system_set(
@@ -90,14 +87,7 @@ impl PegBundle {
     }
 }
 
-fn spawn_peg_system(
-    mut commands: Commands,
-    input_state: Res<InputState>,
-    game_assets: Res<GameAssets>,
-) {
-    if !input_state.just_active(GameAction::SpawnPegs) {
-        return;
-    }
+fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
     let image_handle = game_assets.peg_image.clone();
     commands.spawn_batch((0..=14).flat_map(move |i| {
         (1..=7).map({
@@ -117,6 +107,7 @@ fn spawn_peg_system(
 fn select_target_pegs_system(
     mut commands: Commands,
     peg_config: Res<PegConfig>,
+    mut state: ResMut<State<IngameState>>,
     mut pegs: Query<(Entity, &mut Sprite), Added<Peg>>,
 ) {
     let mut pegs_vec: Vec<_> = pegs.iter_mut().collect();
@@ -130,6 +121,7 @@ fn select_target_pegs_system(
         sprite.color = Color::ORANGE;
         pegs_left -= 1;
     }
+    state.set(IngameState::Launcher).unwrap();
 }
 
 fn peg_despawn_system(

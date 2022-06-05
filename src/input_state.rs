@@ -31,7 +31,6 @@ impl InputState {
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub enum GameAction {
     Shoot,
-    SpawnPegs,
     MoveLauncher,
 }
 
@@ -75,14 +74,5 @@ fn input_state_system(
     }
     if mouse_buttons.just_pressed(MouseButton::Left) {
         input_state.just_active_actions.insert(GameAction::Shoot);
-    }
-
-    if mouse_buttons.pressed(MouseButton::Right) {
-        input_state.active_actions.insert(GameAction::SpawnPegs);
-    }
-    if mouse_buttons.just_pressed(MouseButton::Right) {
-        input_state
-            .just_active_actions
-            .insert(GameAction::SpawnPegs);
     }
 }

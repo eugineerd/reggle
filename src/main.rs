@@ -29,7 +29,7 @@ use common::*;
 fn main() {
     App::new()
         .add_state(GameState::Ingame)
-        .add_state(IngameState::Launcher)
+        .add_state(IngameState::AllocatePegs)
         .add_plugins(DefaultPlugins)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin)
