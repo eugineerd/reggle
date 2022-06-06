@@ -34,7 +34,7 @@ jobs:
       - name: Rustfmt
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features --no-deps -- -D warnings
+        run: cargo clippy --workspace --profile dev-ci --all-targets --all-features --no-deps -- -D warnings
     
   build-native:
     needs: lints
@@ -76,7 +76,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
+          key: wasm-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -93,7 +93,8 @@ jobs:
     needs: build-native
     strategy: 
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Test only on windows for now
+        os: [windows-latest] 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -113,5 +114,22 @@ jobs:
       - name: Install bevy dependecies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
         if: runner.os == 'linux'
-      - name: Build
+      - name: Run
         run: cargo run --profile dev-ci --features exit_timeout
+        
+  notify-on-fail:
+    needs: [test-native, build-wasm]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send TG message ${{ github.actor }}
+        run: |
+          curl --get \
+          --data-urlencode "chat_id=${{ secrets.TG_CHAT_ID }}" \
+          --data-urlencode "parse_mode=Markdown" \
+          --data-urlencode  "text=$(echo -e \
+          "\`${{ github.repository }}\`: \`${{ github.workflow }}\` workflow failed!\n \
+          commit: \`${{ github.sha }}\`\n \
+          author: \`${{ github.actor }}\`" \
+          )" \
+          https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage

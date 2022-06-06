@@ -1,8 +1,10 @@
 name: Deploy wasm build
 
 on:
-  push:
-    branches: [ main ]
+  workflow_run:
+    workflows: [CI]
+    types:
+      - completed
 
 env:
   CARGO_TERM_COLOR: always
@@ -11,6 +13,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
     - uses: actions/checkout@v3
     - uses: actions/cache@v3
@@ -21,7 +24,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
-        key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
+        key: wasm-cargo-ci-${{ hashFiles('**/Cargo.toml') }}
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
