@@ -35,7 +35,7 @@ jobs:
         run: cargo build --release
       - name: Move executable
         shell: bash
-        run: cp target/release/reggle* ./
+        run: if [ -f target/release/reggle ]; then cp target/release/reggle ./; else cp target/release/reggle.exe ./; fi
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.1.0
         with:
