@@ -49,11 +49,22 @@ fn main() {
         .add_plugin(ui::UiPlugin)
         .insert_resource(GameAssets::default())
         .insert_resource(GameStats::default())
+        .add_system(exit_timeout_system)
         .add_startup_system(load_assets)
         .add_startup_system(setup_graphics.after(load_assets))
         .add_startup_system(setup_level)
         .run();
 }
+
+#[cfg(feature = "exit_timeout")]
+fn exit_timeout_system(time: Res<Time>, mut writer: EventWriter<bevy::app::AppExit>) {
+    if time.time_since_startup() > std::time::Duration::from_secs(5) {
+        writer.send(bevy::app::AppExit);
+    }
+}
+
+#[cfg(not(feature = "exit_timeout"))]
+fn exit_timeout_system() {}
 
 fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
     assets.peg_hit_sound = vec![

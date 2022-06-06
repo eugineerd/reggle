@@ -23,6 +23,7 @@ default = [
     "bevy_kira_audio/ogg",
 ]
 dev = ["bevy/dynamic"]
+exit_timeout = []
 
 # Enable only a small amount of optimization in debug mode
 [profile.dev]
