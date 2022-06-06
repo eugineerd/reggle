@@ -1,7 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
@@ -31,8 +30,6 @@ fn main() {
         .add_state(GameState::Ingame)
         .add_state(IngameState::AllocatePegs)
         .add_plugins(DefaultPlugins)
-        .add_plugin(LogDiagnosticsPlugin::default())
-        .add_plugin(FrameTimeDiagnosticsPlugin)
         .add_plugin(AudioPlugin)
         .add_plugin(ShapePlugin)
         .insert_resource(ClearColor(Color::BLACK))
@@ -43,8 +40,7 @@ fn main() {
             gravity: Vec2::new(0.0, -9.81 * 24.0),
             ..Default::default()
         })
-        .add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(debug::DebugPlugin)
+        // .add_plugin(debug::DebugPlugin)
         .add_plugin(input_state::InputStatePlugin)
         .add_plugin(ball::BallPlugin)
         .add_plugin(peg::PegPlugin)
@@ -67,6 +63,7 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
         asset_server.load("sfx/peg/impactGlass_medium_003.ogg"),
         asset_server.load("sfx/peg/impactGlass_medium_004.ogg"),
     ];
+    assets.peg_pop_sound = asset_server.load("sfx/pop.ogg");
 
     assets.peg_image = asset_server.load("sprites/peg.png");
     assets.peg_hit_image = asset_server.load("sprites/peg_hit.png");
@@ -94,17 +91,38 @@ fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
 
 fn setup_level(mut commands: Commands) {
     commands
-        .spawn()
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(500.0 * 2.0, 10.0 * 2.0)),
+                color: Color::GRAY,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .insert(Collider::cuboid(500.0, 10.0))
         .insert(Transform::from_xyz(0.0, ARENA_CEILING + 10.0 / 2.0, 0.0))
         .insert(GlobalTransform::default());
     commands
-        .spawn()
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(10.0 * 2.0, 500.0 * 2.0)),
+                color: Color::GRAY,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .insert(Collider::cuboid(10.0, 500.0))
         .insert(Transform::from_xyz(-(ARENA_WALL + 10.0 / 2.0), 0.0, 0.0))
         .insert(GlobalTransform::default());
     commands
-        .spawn()
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(10.0 * 2.0, 500.0 * 2.0)),
+                color: Color::GRAY,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .insert(Collider::cuboid(10.0, 500.0))
         .insert(Transform::from_xyz(ARENA_WALL + 10.0 / 2.0, 0.0, 0.0))
         .insert(GlobalTransform::default());

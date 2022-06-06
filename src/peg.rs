@@ -127,20 +127,27 @@ fn select_target_pegs_system(
 fn peg_despawn_system(
     mut commands: Commands,
     time: Res<Time>,
+    audio: Res<Audio>,
+    game_assets: Res<GameAssets>,
     mut state: ResMut<State<IngameState>>,
+    mut peg_sprites: Query<&mut Sprite, With<Peg>>,
     mut pegs_to_despawn: ResMut<PegsToDespawn>,
 ) {
     pegs_to_despawn.despawn_timer.tick(time.delta());
-    if pegs_to_despawn.despawn_timer.just_finished() {
-        if let Some(peg) = pegs_to_despawn.queue.front() {
+    if let Some(peg) = pegs_to_despawn.queue.front() {
+        let inflated_size =
+            PEG_RADIUS * 2.0 + pegs_to_despawn.despawn_timer.percent() * PEG_RADIUS * 1.5;
+        peg_sprites.get_mut(*peg).unwrap().custom_size = Some(Vec2::splat(inflated_size));
+        if pegs_to_despawn.despawn_timer.just_finished() {
+            audio.play(game_assets.peg_pop_sound.clone());
             commands.entity(*peg).despawn();
             pegs_to_despawn.queue.pop_front();
-        } else {
-            pegs_to_despawn.despawn_timer.reset();
-            pegs_to_despawn.queue.clear();
-            pegs_to_despawn.set.clear();
-            state.set(IngameState::Launcher).unwrap();
         }
+    } else {
+        pegs_to_despawn.despawn_timer.reset();
+        pegs_to_despawn.queue.clear();
+        pegs_to_despawn.set.clear();
+        state.set(IngameState::Launcher).unwrap();
     }
 }
 
