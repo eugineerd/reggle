@@ -34,3 +34,7 @@ opt-level = 3
 
 [profile.release]
 lto = "thin"
+
+# No optimizations for faster builds
+[profile.dev-ci]
+inherits = "dev"
