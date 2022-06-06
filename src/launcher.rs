@@ -8,23 +8,19 @@ use crate::{
     ball::BallBundle,
     common::GameAssets,
     input_state::{GameAction, InputState},
-    load_assets,
 };
 
 pub struct LauncherPlugin;
 
 impl Plugin for LauncherPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(
-            SystemSet::on_enter(GameState::Ingame)
-                .with_system(setup_ball_launcher.after(load_assets)),
-        )
-        .add_system_set(
-            SystemSet::on_update(GameState::Ingame).with_system(launcher_control_system),
-        )
-        .add_system_set(
-            SystemSet::on_update(IngameState::Launcher).with_system(ball_launcher_system),
-        );
+        app.add_system_set(SystemSet::on_enter(GameState::Ingame).with_system(setup_ball_launcher))
+            .add_system_set(
+                SystemSet::on_update(GameState::Ingame).with_system(launcher_control_system),
+            )
+            .add_system_set(
+                SystemSet::on_update(IngameState::Launcher).with_system(ball_launcher_system),
+            );
     }
 }
 

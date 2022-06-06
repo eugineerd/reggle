@@ -58,7 +58,8 @@ fn main() {
 
 #[cfg(feature = "exit_timeout")]
 fn exit_timeout_system(time: Res<Time>, mut writer: EventWriter<bevy::app::AppExit>) {
-    if time.time_since_startup() > std::time::Duration::from_secs(5) {
+    if time.time_since_startup() > std::time::Duration::from_secs(10) {
+        println!("Didn't crash");
         writer.send(bevy::app::AppExit);
     }
 }
