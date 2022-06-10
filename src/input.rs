@@ -1,23 +1,23 @@
 use bevy::{prelude::*, utils::HashSet};
 
-pub struct InputStatePlugin;
+pub struct GameInputPlugin;
 
-impl Plugin for InputStatePlugin {
+impl Plugin for GameInputPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(InputState::default())
+        app.insert_resource(GameInput::default())
             .add_system_to_stage(CoreStage::PreUpdate, input_state_system);
     }
 }
 
 #[derive(Default)]
-pub struct InputState {
+pub struct GameInput {
     pub cursor_position: Vec2,
     lock_input: bool,
     active_actions: HashSet<GameAction>,
     just_active_actions: HashSet<GameAction>,
 }
 
-impl InputState {
+impl GameInput {
     pub fn active(&self, action: GameAction) -> bool {
         self.active_actions.contains(&action)
     }
@@ -39,7 +39,7 @@ fn input_state_system(
     mouse_buttons: Res<Input<MouseButton>>,
     mut cursor_event_reader: EventReader<CursorMoved>,
     windows: Res<Windows>,
-    mut input_state: ResMut<InputState>,
+    mut input_state: ResMut<GameInput>,
 ) {
     input_state.active_actions.clear();
     input_state.just_active_actions.clear();

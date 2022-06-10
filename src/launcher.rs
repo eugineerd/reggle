@@ -8,7 +8,7 @@ use crate::LAUNCHER_BASE_POWER;
 use crate::{
     ball::BallBundle,
     common::GameAssets,
-    input_state::{GameAction, InputState},
+    input::{GameAction, GameInput},
 };
 
 pub struct LauncherPlugin;
@@ -51,7 +51,7 @@ fn setup_ball_launcher(mut commands: Commands, game_assets: Res<GameAssets>) {
 }
 
 fn launcher_control_system(
-    input_state: Res<InputState>,
+    input_state: Res<GameInput>,
     mut launcher: Query<(&mut Transform, &mut Launcher)>,
 ) {
     let (mut tr, mut launcher) = launcher.single_mut();
@@ -66,7 +66,7 @@ fn launcher_control_system(
 
 fn ball_launcher_system(
     mut commands: Commands,
-    input_state: Res<InputState>,
+    input_state: Res<GameInput>,
     game_assets: Res<GameAssets>,
     launcher: Query<(&Transform, &Launcher)>,
 ) {

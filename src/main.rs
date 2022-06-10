@@ -18,7 +18,7 @@ const ARENA_WALL: f32 = 435.0;
 mod ball;
 mod common;
 mod debug;
-mod input_state;
+mod input;
 mod launcher;
 mod peg;
 mod trajectory;
@@ -42,7 +42,7 @@ fn main() {
             ..Default::default()
         })
         // .add_plugin(debug::DebugPlugin)
-        .add_plugin(input_state::InputStatePlugin)
+        .add_plugin(input::GameInputPlugin)
         .add_plugin(ball::BallPlugin)
         .add_plugin(peg::PegPlugin)
         .add_plugin(launcher::LauncherPlugin)
