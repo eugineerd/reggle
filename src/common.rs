@@ -22,11 +22,11 @@ pub struct GameStats {
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum GameState {
     _Menu,
-    Ingame,
+    InGame,
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub enum IngameState {
+pub enum InGameState {
     AllocatePegs,
     Launcher,
     Ball,

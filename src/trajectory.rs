@@ -1,7 +1,5 @@
-use bevy::ecs::schedule::ShouldRun;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
-use bevy::utils::HashSet;
+use bevy::utils::{HashMap, HashSet};
 use bevy_prototype_lyon::prelude::{DrawMode, GeometryBuilder, PathBuilder, StrokeMode};
 use bevy_prototype_lyon::shapes::Circle;
 use bevy_rapier2d::na;
@@ -11,38 +9,29 @@ use bevy_rapier2d::rapier::prelude::{
     IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsPipeline,
     RigidBodyBuilder, RigidBodySet,
 };
+use iyes_loopless::prelude::*;
 
 use crate::ball::BallPhysicsBundle;
-use crate::common::{GameState, IngameState};
+use crate::common::{GameState, InGameState};
 use crate::launcher::Launcher;
 use crate::PIXELS_PER_METER;
 use crate::PLAYER_BALL_RADIUS;
 
 pub struct TrajectoryPlugin;
 
-// Hack until stageless lands
-pub enum TrajectoryWorldActive {
-    Yes,
-    No,
-}
-
 impl Plugin for TrajectoryPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(TrajectoryWorldActive::No)
-            .add_system_set(
-                SystemSet::on_enter(GameState::Ingame).with_system(init_trajectory_world),
+        app.add_enter_system(GameState::InGame, init_trajectory_world)
+            .add_system(draw_trajectory_system.run_in_state(InGameState::Launcher))
+            .add_system(
+                despawn_trajectory_line
+                    .run_in_state(InGameState::Launcher)
+                    .after(draw_trajectory_system),
             )
-            .add_system_set(
-                SystemSet::on_update(IngameState::Launcher)
-                    .with_system(draw_trajectory_system)
-                    .with_system(despawn_trajectory_line.before(draw_trajectory_system)),
-            )
-            .add_system_set(
-                SystemSet::on_exit(IngameState::Launcher).with_system(despawn_trajectory_line),
-            )
+            .add_exit_system(InGameState::Launcher, despawn_trajectory_line)
             .add_system_to_stage(
                 CoreStage::PostUpdate,
-                sync_colliders_system.with_run_criteria(should_sync),
+                sync_colliders_system.run_in_state(GameState::InGame),
             );
     }
 }
@@ -220,26 +209,12 @@ impl TrajectoryWorld {
     }
 }
 
-pub fn init_trajectory_world(
-    mut commands: Commands,
-    rapier_config: Res<RapierConfiguration>,
-    mut trajectory_world_active: ResMut<TrajectoryWorldActive>,
-) {
+pub fn init_trajectory_world(mut commands: Commands, rapier_config: Res<RapierConfiguration>) {
     commands.insert_resource(TrajectoryWorld::new(
         PIXELS_PER_METER,
         rapier_config.scaled_shape_subdivision,
         rapier_config.gravity / PIXELS_PER_METER,
     ));
-    // Hack until stageless lands
-    *trajectory_world_active = TrajectoryWorldActive::Yes;
-}
-
-// Hack until stageless lands
-pub fn should_sync(trajectory_world_active: Res<TrajectoryWorldActive>) -> ShouldRun {
-    match *trajectory_world_active {
-        TrajectoryWorldActive::Yes => ShouldRun::Yes,
-        TrajectoryWorldActive::No => ShouldRun::No,
-    }
 }
 
 pub fn sync_colliders_system(

@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
+use iyes_loopless::prelude::*;
 
 const PLAYER_BALL_RADIUS: f32 = 8.0;
 const LAUNCHER_BASE_POWER: f32 = 300.0;
@@ -27,8 +28,8 @@ use common::*;
 
 fn main() {
     App::new()
-        .add_state(GameState::Ingame)
-        .add_state(IngameState::AllocatePegs)
+        .add_loopless_state(GameState::InGame)
+        .add_loopless_state(InGameState::AllocatePegs)
         .add_plugins(DefaultPlugins)
         .add_plugin(AudioPlugin)
         .add_plugin(ShapePlugin)
@@ -56,6 +57,7 @@ fn main() {
         .run();
 }
 
+// Required for CI
 #[cfg(feature = "exit_timeout")]
 fn exit_timeout_system(time: Res<Time>, mut writer: EventWriter<bevy::app::AppExit>) {
     if time.time_since_startup() > std::time::Duration::from_secs(10) {
@@ -64,6 +66,7 @@ fn exit_timeout_system(time: Res<Time>, mut writer: EventWriter<bevy::app::AppEx
     }
 }
 
+// Required for CI
 #[cfg(not(feature = "exit_timeout"))]
 fn exit_timeout_system() {}
 

@@ -1,8 +1,9 @@
 use bevy::{prelude::*, utils::HashSet};
 use bevy_kira_audio::Audio;
 use bevy_rapier2d::prelude::*;
+use iyes_loopless::prelude::*;
 
-use crate::common::IngameState;
+use crate::common::{GameState, InGameState};
 use crate::{common::GameAssets, PLAYER_BALL_RADIUS};
 use crate::{ARENA_FLOOR, ARENA_WALL};
 
@@ -11,12 +12,17 @@ pub struct BallPlugin;
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<BallCollisionEvent>()
-            .add_system_set(
-                SystemSet::on_update(IngameState::Ball)
-                    .with_system(ball_collision_system)
-                    .with_system(ball_despawn_system.before(ball_collision_system)),
+            .add_system(ball_collision_system.run_in_state(InGameState::Ball))
+            .add_system(
+                ball_despawn_system
+                    .run_in_state(InGameState::Ball)
+                    .before(ball_collision_system),
             )
-            .add_system(ball_hitsound_system.before(ball_collision_system));
+            .add_system(
+                ball_hitsound_system
+                    .run_in_state(GameState::InGame)
+                    .before(ball_collision_system),
+            );
     }
 }
 
@@ -91,13 +97,9 @@ impl BallBundle {
     }
 }
 
-fn ball_despawn_system(
-    mut commands: Commands,
-    mut state: ResMut<State<IngameState>>,
-    balls: Query<(Entity, &Transform), With<Ball>>,
-) {
+fn ball_despawn_system(mut commands: Commands, balls: Query<(Entity, &Transform), With<Ball>>) {
     if balls.is_empty() {
-        state.set(IngameState::Cleanup).unwrap();
+        commands.insert_resource(NextState(InGameState::Cleanup));
         return;
     }
     for (entity, tr) in balls.iter() {

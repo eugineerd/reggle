@@ -7,10 +7,13 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.7", default-features = false }
+
+# Bevy plugins
 bevy_prototype_lyon = "0.5"
 bevy_kira_audio = "0.10"
 bevy_rapier2d = "0.14"
 bevy-inspector-egui = "0.11"
+iyes_loopless = "0.5"
 
 fastrand = "1.7"
 

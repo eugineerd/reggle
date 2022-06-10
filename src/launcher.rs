@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::Inspectable;
 use bevy_rapier2d::prelude::Velocity;
+use iyes_loopless::prelude::*;
 
-use crate::common::{GameState, IngameState};
+use crate::common::{GameState, InGameState};
 use crate::LAUNCHER_BASE_POWER;
 use crate::{
     ball::BallBundle,
@@ -14,13 +15,9 @@ pub struct LauncherPlugin;
 
 impl Plugin for LauncherPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(SystemSet::on_enter(GameState::Ingame).with_system(setup_ball_launcher))
-            .add_system_set(
-                SystemSet::on_update(GameState::Ingame).with_system(launcher_control_system),
-            )
-            .add_system_set(
-                SystemSet::on_update(IngameState::Launcher).with_system(ball_launcher_system),
-            );
+        app.add_enter_system(GameState::InGame, setup_ball_launcher)
+            .add_system(launcher_control_system.run_in_state(GameState::InGame))
+            .add_system(ball_launcher_system.run_in_state(InGameState::Launcher));
     }
 }
 
@@ -71,11 +68,10 @@ fn ball_launcher_system(
     mut commands: Commands,
     input_state: Res<InputState>,
     game_assets: Res<GameAssets>,
-    mut state: ResMut<State<IngameState>>,
     launcher: Query<(&Transform, &Launcher)>,
 ) {
     if input_state.just_active(GameAction::Shoot) {
-        state.set(IngameState::Ball).unwrap();
+        commands.insert_resource(NextState(InGameState::Ball));
         let (tr, launcher) = launcher.single();
         commands
             .spawn_bundle(BallBundle::new(tr.translation, &game_assets))

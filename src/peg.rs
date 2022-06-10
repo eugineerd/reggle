@@ -2,10 +2,11 @@ use bevy::prelude::*;
 use bevy::utils::HashSet;
 use bevy_kira_audio::Audio;
 use bevy_rapier2d::prelude::*;
+use iyes_loopless::prelude::*;
 use std::collections::VecDeque;
 
 use crate::ball::BallCollisionEvent;
-use crate::common::{GameState, IngameState};
+use crate::common::{GameState, InGameState};
 use crate::{GameAssets, PEG_RADIUS};
 
 pub struct PegPlugin;
@@ -16,15 +17,14 @@ impl Plugin for PegPlugin {
             .insert_resource(PegConfig {
                 target_pegs_count: 20,
             })
-            .add_system_set(SystemSet::on_enter(GameState::Ingame).with_system(spawn_peg_system))
-            .add_system_set(
-                SystemSet::on_update(IngameState::AllocatePegs)
-                    .with_system(select_target_pegs_system.after(spawn_peg_system)),
+            .add_enter_system(GameState::InGame, spawn_peg_system)
+            .add_system(
+                select_target_pegs_system
+                    .run_in_state(InGameState::AllocatePegs)
+                    .after(spawn_peg_system),
             )
-            .add_system_set(SystemSet::on_update(IngameState::Ball).with_system(peg_hit_system))
-            .add_system_set(
-                SystemSet::on_update(IngameState::Cleanup).with_system(peg_despawn_system),
-            );
+            .add_system(peg_hit_system.run_in_state(InGameState::Ball))
+            .add_system(peg_despawn_system.run_in_state(InGameState::Cleanup));
     }
 }
 
@@ -107,7 +107,6 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
 fn select_target_pegs_system(
     mut commands: Commands,
     peg_config: Res<PegConfig>,
-    mut state: ResMut<State<IngameState>>,
     mut pegs: Query<(Entity, &mut Sprite), Added<Peg>>,
 ) {
     let mut pegs_vec: Vec<_> = pegs.iter_mut().collect();
@@ -121,7 +120,7 @@ fn select_target_pegs_system(
         sprite.color = Color::ORANGE;
         pegs_left -= 1;
     }
-    state.set(IngameState::Launcher).unwrap();
+    commands.insert_resource(NextState(InGameState::Launcher));
 }
 
 fn peg_despawn_system(
@@ -129,7 +128,6 @@ fn peg_despawn_system(
     time: Res<Time>,
     audio: Res<Audio>,
     game_assets: Res<GameAssets>,
-    mut state: ResMut<State<IngameState>>,
     mut peg_sprites: Query<&mut Sprite, With<Peg>>,
     mut pegs_to_despawn: ResMut<PegsToDespawn>,
 ) {
@@ -147,7 +145,7 @@ fn peg_despawn_system(
         pegs_to_despawn.despawn_timer.reset();
         pegs_to_despawn.queue.clear();
         pegs_to_despawn.set.clear();
-        state.set(IngameState::Launcher).unwrap();
+        commands.insert_resource(NextState(InGameState::Launcher));
     }
 }
 
