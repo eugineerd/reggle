@@ -22,11 +22,15 @@ pub struct TrajectoryPlugin;
 impl Plugin for TrajectoryPlugin {
     fn build(&self, app: &mut App) {
         app.add_enter_system(GameState::InGame, init_trajectory_world)
-            .add_system(draw_trajectory_system.run_in_state(InGameState::Launcher))
+            .add_system(
+                draw_trajectory_system
+                    .run_in_state(InGameState::Launcher)
+                    .label("draw_trajectory_system"),
+            )
             .add_system(
                 despawn_trajectory_line
                     .run_in_state(InGameState::Launcher)
-                    .after(draw_trajectory_system),
+                    .after("draw_trajectory_system"),
             )
             .add_exit_system(InGameState::Launcher, despawn_trajectory_line)
             .add_system_to_stage(

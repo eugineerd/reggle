@@ -18,11 +18,7 @@ impl Plugin for PegPlugin {
                 target_pegs_count: 20,
             })
             .add_enter_system(GameState::InGame, spawn_peg_system)
-            .add_system(
-                select_target_pegs_system
-                    .run_in_state(InGameState::AllocatePegs)
-                    .after(spawn_peg_system),
-            )
+            .add_system(select_target_pegs_system.run_in_state(InGameState::AllocatePegs))
             .add_system(peg_hit_system.run_in_state(InGameState::Ball))
             .add_system(peg_despawn_system.run_in_state(InGameState::Cleanup));
     }

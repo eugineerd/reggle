@@ -12,16 +12,20 @@ pub struct BallPlugin;
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<BallCollisionEvent>()
-            .add_system(ball_collision_system.run_in_state(InGameState::Ball))
+            .add_system(
+                ball_collision_system
+                    .run_in_state(InGameState::Ball)
+                    .label("ball_collision_system"),
+            )
             .add_system(
                 ball_despawn_system
                     .run_in_state(InGameState::Ball)
-                    .before(ball_collision_system),
+                    .before("ball_collision_system"),
             )
             .add_system(
                 ball_hitsound_system
                     .run_in_state(GameState::InGame)
-                    .before(ball_collision_system),
+                    .after("ball_collision_system"),
             );
     }
 }
