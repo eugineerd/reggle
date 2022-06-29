@@ -14,9 +14,19 @@ pub struct GameAssets {
     pub background_image: Handle<Image>,
 }
 
-#[derive(Default, Inspectable)]
+#[derive(Inspectable)]
 pub struct GameStats {
     pub player_score: usize,
+    pub target_pegs_left: usize,
+}
+
+impl Default for GameStats {
+    fn default() -> Self {
+        Self {
+            player_score: 0,
+            target_pegs_left: 20,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -27,7 +37,6 @@ pub enum GameState {
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum InGameState {
-    AllocatePegs,
     Launcher,
     Ball,
     Cleanup,

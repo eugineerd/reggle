@@ -29,7 +29,7 @@ use common::*;
 fn main() {
     App::new()
         .add_loopless_state(GameState::InGame)
-        .add_loopless_state(InGameState::AllocatePegs)
+        .add_loopless_state(InGameState::Launcher)
         .add_plugins(DefaultPlugins)
         .add_plugin(AudioPlugin)
         .add_plugin(ShapePlugin)

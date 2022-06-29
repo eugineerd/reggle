@@ -6,7 +6,7 @@ use iyes_loopless::prelude::*;
 use std::collections::VecDeque;
 
 use crate::ball::BallCollisionEvent;
-use crate::common::{GameState, InGameState};
+use crate::common::{GameState, GameStats, InGameState};
 use crate::{GameAssets, PEG_RADIUS};
 
 pub struct PegPlugin;
@@ -14,18 +14,10 @@ pub struct PegPlugin;
 impl Plugin for PegPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PegsToDespawn::default())
-            .insert_resource(PegConfig {
-                target_pegs_count: 20,
-            })
-            .add_enter_system(GameState::InGame, spawn_peg_system)
-            .add_system(select_target_pegs_system.run_in_state(InGameState::AllocatePegs))
+            .add_enter_system(GameState::InGame, spawn_peg_system.exclusive_system())
             .add_system(peg_hit_system.run_in_state(InGameState::Ball))
             .add_system(peg_despawn_system.run_in_state(InGameState::Cleanup));
     }
-}
-
-pub struct PegConfig {
-    pub target_pegs_count: usize,
 }
 
 #[derive(Component)]
@@ -83,40 +75,31 @@ impl PegBundle {
     }
 }
 
-fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
-    let image_handle = game_assets.peg_image.clone();
-    commands.spawn_batch((0..=14).flat_map(move |i| {
-        (1..=7).map({
-            let image_handle = image_handle.clone();
-            move |j| {
-                let transform = Transform::from_xyz(
-                    (14 / 2 - i) as f32 * PEG_RADIUS * 5.0,
-                    -j as f32 * PEG_RADIUS * 5.0,
-                    0.0,
-                );
-                PegBundle::new(transform, image_handle.clone())
-            }
-        })
-    }));
-}
+fn spawn_peg_system(world: &mut World) {
+    let image_handle = world.resource::<GameAssets>().peg_image.clone();
+    let mut pegs_entities: Vec<Entity> = world
+        .spawn_batch((0..=14).flat_map(move |i| {
+            (1..=7).map({
+                let image_handle = image_handle.clone();
+                move |j| {
+                    let transform = Transform::from_xyz(
+                        (14 / 2 - i) as f32 * PEG_RADIUS * 5.0,
+                        -j as f32 * PEG_RADIUS * 5.0,
+                        0.0,
+                    );
+                    PegBundle::new(transform, image_handle.clone())
+                }
+            })
+        }))
+        .collect();
 
-fn select_target_pegs_system(
-    mut commands: Commands,
-    peg_config: Res<PegConfig>,
-    mut pegs: Query<(Entity, &mut Sprite), Added<Peg>>,
-) {
-    let mut pegs_vec: Vec<_> = pegs.iter_mut().collect();
-    fastrand::shuffle(&mut pegs_vec);
-    let mut pegs_left = peg_config.target_pegs_count;
-    for (entity, sprite) in &mut pegs_vec {
-        if pegs_left == 0 {
-            break;
+    fastrand::shuffle(&mut pegs_entities);
+    let target_pegs_num = world.resource::<GameStats>().target_pegs_left;
+    for e in pegs_entities.iter().take(target_pegs_num) {
+        if let Some(mut sprite) = world.entity_mut(*e).insert(TargetPeg).get_mut::<Sprite>() {
+            sprite.color = Color::ORANGE
         }
-        commands.entity(*entity).insert(TargetPeg);
-        sprite.color = Color::ORANGE;
-        pegs_left -= 1;
     }
-    commands.insert_resource(NextState(InGameState::Launcher));
 }
 
 fn peg_despawn_system(
@@ -124,6 +107,7 @@ fn peg_despawn_system(
     time: Res<Time>,
     audio: Res<Audio>,
     game_assets: Res<GameAssets>,
+    mut game_stats: ResMut<GameStats>,
     mut peg_sprites: Query<&mut Sprite, With<Peg>>,
     mut pegs_to_despawn: ResMut<PegsToDespawn>,
 ) {
@@ -134,6 +118,7 @@ fn peg_despawn_system(
         peg_sprites.get_mut(*peg).unwrap().custom_size = Some(Vec2::splat(inflated_size));
         if pegs_to_despawn.despawn_timer.just_finished() {
             audio.play(game_assets.peg_pop_sound.clone());
+            game_stats.player_score += 1;
             commands.entity(*peg).despawn();
             pegs_to_despawn.queue.pop_front();
         }
