@@ -93,6 +93,7 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
     assets.ball_image = asset_server.load("sprites/ball.png");
     assets.launcher_image = asset_server.load("sprites/launcher.png");
     assets.background_image = asset_server.load("sprites/background.png");
+    assets.normal_font = asset_server.load("fonts/NotoSans.ttf");
 }
 
 fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {

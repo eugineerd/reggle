@@ -12,6 +12,7 @@ pub struct GameAssets {
     pub ball_image: Handle<Image>,
     pub launcher_image: Handle<Image>,
     pub background_image: Handle<Image>,
+    pub normal_font: Handle<Font>,
 }
 
 #[derive(Inspectable)]

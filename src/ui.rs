@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 
-use crate::GameStats;
+use crate::common::GameAssets;
+use crate::{load_assets, GameStats};
 
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_ui)
+        app.add_startup_system(setup_ui.after(load_assets))
             .add_system(update_score_system);
     }
 }
@@ -14,14 +15,18 @@ impl Plugin for UiPlugin {
 #[derive(Component)]
 struct ScoreUi;
 
-fn setup_ui(mut commands: Commands) {
+fn setup_ui(mut commands: Commands, game_assets: Res<GameAssets>) {
     commands.spawn_bundle(UiCameraBundle::default());
     commands
         .spawn_bundle(TextBundle {
             text: Text {
                 sections: vec![TextSection {
                     value: "0".to_string(),
-                    ..Default::default()
+                    style: TextStyle {
+                        font: game_assets.normal_font.clone(),
+                        font_size: 42.0,
+                        ..Default::default()
+                    },
                 }],
                 ..Default::default()
             },
