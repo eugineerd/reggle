@@ -16,7 +16,6 @@ impl Plugin for UiPlugin {
 struct ScoreUi;
 
 fn setup_ui(mut commands: Commands, game_assets: Res<GameAssets>) {
-    commands.spawn_bundle(UiCameraBundle::default());
     commands
         .spawn_bundle(TextBundle {
             text: Text {

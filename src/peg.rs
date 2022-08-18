@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::utils::HashSet;
-use bevy_kira_audio::Audio;
+use bevy_kira_audio::{Audio, AudioControl};
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 use std::collections::VecDeque;
@@ -53,6 +53,7 @@ pub struct PegBundle {
     pub global_transform: GlobalTransform,
     pub image_handle: Handle<Image>,
     pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
     pub name: Name,
     pub peg: Peg,
 }
@@ -66,9 +67,10 @@ impl PegBundle {
                 custom_size: Some(Vec2::new(PEG_RADIUS * 2.0, PEG_RADIUS * 2.0)),
                 ..Default::default()
             },
-            global_transform: GlobalTransform::default(),
+            global_transform: Default::default(),
             image_handle,
-            visibility: Visibility::default(),
+            visibility: Default::default(),
+            computed_visibility: Default::default(),
             name: Name::new("Peg"),
             peg: Peg,
         }

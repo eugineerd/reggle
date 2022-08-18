@@ -45,6 +45,7 @@ fn main() {
         .add_plugin(input::GameInputPlugin)
         .add_plugin(ball::BallPlugin)
         .add_plugin(peg::PegPlugin)
+        .add_plugin(debug::DebugPlugin)
         .add_plugin(launcher::LauncherPlugin)
         .add_plugin(trajectory::TrajectoryPlugin)
         .add_plugin(ui::UiPlugin)
@@ -97,7 +98,7 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
 }
 
 fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(Camera2dBundle::default());
     commands.spawn_bundle(SpriteBundle {
         texture: game_assets.background_image.clone(),
         transform: Transform::from_xyz(0.0, 0.0, -0.01),

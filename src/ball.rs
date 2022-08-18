@@ -1,5 +1,5 @@
 use bevy::{prelude::*, utils::HashSet};
-use bevy_kira_audio::Audio;
+use bevy_kira_audio::{Audio, AudioControl};
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
@@ -42,7 +42,7 @@ pub struct BallPhysicsBundle {
     pub restitution: Restitution,
     pub ccd: Ccd,
     pub transform: Transform,
-    pub mass: MassProperties,
+    pub mass: AdditionalMassProperties,
 }
 
 impl BallPhysicsBundle {
@@ -56,10 +56,10 @@ impl BallPhysicsBundle {
             },
             ccd: Ccd::enabled(),
             transform: Transform::from_translation(translation),
-            mass: MassProperties {
+            mass: AdditionalMassProperties::MassProperties(MassProperties {
                 mass: 1.0,
                 ..Default::default()
-            },
+            }),
         }
     }
 }
@@ -74,6 +74,7 @@ pub struct BallBundle {
     pub global_transform: GlobalTransform,
     pub texture: Handle<Image>,
     pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
 
     pub name: Name,
     pub ball: Ball,
@@ -94,6 +95,7 @@ impl BallBundle {
             global_transform: Default::default(),
             texture: game_assets.ball_image.clone(),
             visibility: Default::default(),
+            computed_visibility: Default::default(),
 
             name: Name::new("Ball"),
             ball: Ball,
