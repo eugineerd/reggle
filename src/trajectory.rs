@@ -155,8 +155,6 @@ impl TrajectoryWorld {
             dt: 1.0 / 60.0,
             ..Default::default()
         };
-        let physics_hooks = ();
-        let event_handler = ();
 
         self.trajectory_points.clear();
         self.collision_points.clear();
@@ -173,8 +171,8 @@ impl TrajectoryWorld {
                 &mut self.impulse_joint_set,
                 &mut self.multibody_joint_set,
                 &mut self.ccd_solver,
-                &physics_hooks,
-                &event_handler,
+                &(),
+                &(),
             );
 
             let body = &self.rigid_body_set[body_handle];
