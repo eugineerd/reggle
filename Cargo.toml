@@ -13,6 +13,7 @@ bevy_prototype_lyon = "0.6"
 bevy_kira_audio = "0.12"
 bevy_rapier2d = "0.16"
 bevy-inspector-egui = "0.12"
+bevy_tweening = "0.5"
 iyes_loopless = "0.7"
 
 fastrand = "1.7"

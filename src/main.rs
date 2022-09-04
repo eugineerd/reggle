@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
+use bevy_tweening::TweeningPlugin;
 use iyes_loopless::prelude::*;
 
 const PLAYER_BALL_RADIUS: f32 = 8.0;
@@ -33,6 +34,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(AudioPlugin)
         .add_plugin(ShapePlugin)
+        .add_plugin(TweeningPlugin)
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(
             PIXELS_PER_METER,
