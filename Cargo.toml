@@ -26,7 +26,6 @@ default = [
     "bevy/wayland",
     "bevy_kira_audio/ogg",
 ]
-dev = ["bevy/dynamic"]
 exit_timeout = []
 
 # Enable only a small amount of optimization in debug mode
@@ -37,10 +36,11 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
+# Enable extra optimizations for release
 [profile.release]
 lto = "thin"
 
-# No optimizations for faster builds
+# No optimizations for faster CI builds
 [profile.dev-ci]
 inherits = "dev"
 opt-level = 0
