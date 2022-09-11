@@ -5,7 +5,7 @@ use iyes_loopless::prelude::*;
 
 use crate::common::{GameState, InGameState};
 use crate::{common::GameAssets, PLAYER_BALL_RADIUS};
-use crate::{ARENA_FLOOR, ARENA_WALL};
+use crate::{ARENA_POS, ARENA_SIZE};
 
 pub struct BallPlugin;
 
@@ -109,7 +109,11 @@ fn ball_despawn_system(mut commands: Commands, balls: Query<(Entity, &Transform)
         return;
     }
     for (entity, tr) in balls.iter() {
-        if tr.translation.x.abs() > ARENA_WALL || tr.translation.y < ARENA_FLOOR {
+        if tr.translation.x > (ARENA_POS.x + ARENA_SIZE.x / 2.0)
+            || tr.translation.x < (ARENA_POS.x - ARENA_SIZE.x / 2.0)
+            || tr.translation.y > (ARENA_POS.y + ARENA_SIZE.y / 2.0)
+            || tr.translation.y < (ARENA_POS.y - ARENA_SIZE.y / 2.0)
+        {
             commands.entity(entity).despawn()
         }
     }

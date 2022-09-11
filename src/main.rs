@@ -8,13 +8,13 @@ use bevy_rapier2d::prelude::*;
 use bevy_tweening::TweeningPlugin;
 use iyes_loopless::prelude::*;
 
-const PLAYER_BALL_RADIUS: f32 = 8.0;
+const PLAYER_BALL_RADIUS: f32 = 10.0;
 const LAUNCHER_BASE_POWER: f32 = 300.0;
-const PEG_RADIUS: f32 = 10.0;
+const PEG_RADIUS: f32 = 12.0;
 const PIXELS_PER_METER: f32 = 100.0;
-const ARENA_CEILING: f32 = 245.0;
-const ARENA_FLOOR: f32 = -365.0;
-const ARENA_WALL: f32 = 435.0;
+const SCREEN_HEIGHT: f32 = 1000.0;
+const ARENA_SIZE: Vec2 = Vec2::new(1000.0, 800.0);
+const ARENA_POS: Vec2 = Vec2::new(0.0, -100.0);
 
 mod ball;
 mod common;
@@ -100,7 +100,13 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
 }
 
 fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn_bundle(Camera2dBundle {
+        projection: OrthographicProjection {
+            scaling_mode: bevy::render::camera::ScalingMode::FixedVertical(SCREEN_HEIGHT),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
     commands.spawn_bundle(SpriteBundle {
         texture: game_assets.background_image.clone(),
         transform: Transform::from_xyz(0.0, 0.0, -0.01),
@@ -108,41 +114,38 @@ fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
     });
 }
 
+fn spawn_wall(commands: &mut Commands, position: Vec2, width: f32, height: f32) {
+    commands
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(width * 2.0, height * 2.0)),
+                color: Color::GRAY,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .insert(Collider::cuboid(width, height))
+        .insert(Transform::from_xyz(position.x, position.y, 0.0))
+        .insert(GlobalTransform::default());
+}
+
 fn setup_level(mut commands: Commands) {
-    commands
-        .spawn_bundle(SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(500.0 * 2.0, 10.0 * 2.0)),
-                color: Color::GRAY,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Collider::cuboid(500.0, 10.0))
-        .insert(Transform::from_xyz(0.0, ARENA_CEILING + 10.0 / 2.0, 0.0))
-        .insert(GlobalTransform::default());
-    commands
-        .spawn_bundle(SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(10.0 * 2.0, 500.0 * 2.0)),
-                color: Color::GRAY,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Collider::cuboid(10.0, 500.0))
-        .insert(Transform::from_xyz(-(ARENA_WALL + 10.0 / 2.0), 0.0, 0.0))
-        .insert(GlobalTransform::default());
-    commands
-        .spawn_bundle(SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(10.0 * 2.0, 500.0 * 2.0)),
-                color: Color::GRAY,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Collider::cuboid(10.0, 500.0))
-        .insert(Transform::from_xyz(ARENA_WALL + 10.0 / 2.0, 0.0, 0.0))
-        .insert(GlobalTransform::default());
+    spawn_wall(
+        &mut commands,
+        ARENA_POS + Vec2::new(0.0, ARENA_SIZE.y / 2.0),
+        ARENA_SIZE.x / 2.0,
+        10.0,
+    );
+    spawn_wall(
+        &mut commands,
+        ARENA_POS + Vec2::new(ARENA_SIZE.x / 2.0, 0.0),
+        10.0,
+        ARENA_SIZE.y / 2.0,
+    );
+    spawn_wall(
+        &mut commands,
+        ARENA_POS - Vec2::new(ARENA_SIZE.x / 2.0, 0.0),
+        10.0,
+        ARENA_SIZE.y / 2.0,
+    );
 }
