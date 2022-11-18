@@ -1,8 +1,7 @@
 use bevy::prelude::*;
-use bevy_inspector_egui::Inspectable;
 use bevy_kira_audio::AudioSource;
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct GameAssets {
     pub peg_hit_sound: Vec<Handle<AudioSource>>,
     pub peg_image: Handle<Image>,
@@ -15,7 +14,7 @@ pub struct GameAssets {
     pub normal_font: Handle<Font>,
 }
 
-#[derive(Inspectable)]
+#[derive(Reflect, Resource)]
 pub struct GameStats {
     pub player_score: usize,
     pub target_pegs_left: usize,

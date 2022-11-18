@@ -6,15 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.8", default-features = false }
+bevy = { version = "0.9", default-features = false }
 
 # Bevy plugins
-bevy_prototype_lyon = "0.6"
-bevy_kira_audio = "0.12"
-bevy_rapier2d = "0.16"
-bevy-inspector-egui = "0.12"
-bevy_tweening = "0.5"
-iyes_loopless = "0.7"
+bevy_prototype_lyon = "0.7"
+bevy_kira_audio = "0.13"
+bevy_rapier2d = "0.19"
+bevy-inspector-egui = "0.15.0-pre.0"
+bevy_tweening = "0.6"
+iyes_loopless = { git = "https://github.com/IyesGames/iyes_loopless.git", branch = "main" }
 
 fastrand = "1.7"
 

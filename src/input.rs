@@ -9,7 +9,7 @@ impl Plugin for GameInputPlugin {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct GameInput {
     pub cursor_position: Vec2,
     lock_input: bool,

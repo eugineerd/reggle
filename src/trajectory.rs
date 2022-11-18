@@ -40,6 +40,7 @@ impl Plugin for TrajectoryPlugin {
     }
 }
 
+#[derive(Resource)]
 pub struct TrajectoryWorld {
     scale: f32,
     scaled_shape_subdivision: u32,
@@ -277,7 +278,7 @@ fn draw_trajectory_system(
         let line = path_builder.build();
 
         commands
-            .spawn_bundle(GeometryBuilder::build_as(
+            .spawn(GeometryBuilder::build_as(
                 &line,
                 DrawMode::Stroke(StrokeMode::new(Color::WHITE, 2.0)),
                 Transform::default(),
@@ -290,7 +291,7 @@ fn draw_trajectory_system(
                 center: *point,
             };
             commands
-                .spawn_bundle(GeometryBuilder::build_as(
+                .spawn(GeometryBuilder::build_as(
                     &shape,
                     DrawMode::Fill(bevy_prototype_lyon::prelude::FillMode::color(Color::RED)),
                     Transform::default(),

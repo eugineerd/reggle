@@ -17,7 +17,7 @@ struct ScoreUi;
 
 fn setup_ui(mut commands: Commands, game_assets: Res<GameAssets>) {
     commands
-        .spawn_bundle(TextBundle {
+        .spawn(TextBundle {
             text: Text {
                 sections: vec![TextSection {
                     value: "0".to_string(),

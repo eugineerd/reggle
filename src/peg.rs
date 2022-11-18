@@ -3,7 +3,7 @@ use bevy::utils::HashSet;
 use bevy_kira_audio::{Audio, AudioControl};
 use bevy_rapier2d::prelude::*;
 use bevy_tweening::lens::TransformScaleLens;
-use bevy_tweening::{Animator, EaseFunction, Tween, TweeningType};
+use bevy_tweening::{Animator, EaseFunction, Tween};
 use iyes_loopless::prelude::*;
 use std::collections::VecDeque;
 use std::time::Duration;
@@ -17,7 +17,7 @@ pub struct PegPlugin;
 impl Plugin for PegPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PegsToDespawn::default())
-            .add_enter_system(GameState::InGame, spawn_peg_system.exclusive_system())
+            .add_enter_system(GameState::InGame, spawn_peg_system)
             .add_system(peg_hit_system.run_in_state(InGameState::Ball))
             .add_system(peg_despawn_system.run_in_state(InGameState::Cleanup));
     }
@@ -32,6 +32,7 @@ pub struct HitPeg;
 #[derive(Component)]
 pub struct TargetPeg;
 
+#[derive(Resource)]
 pub struct PegsToDespawn {
     set: HashSet<Entity>,
     despawn_timer: Timer,
@@ -42,7 +43,7 @@ impl Default for PegsToDespawn {
     fn default() -> Self {
         Self {
             set: Default::default(),
-            despawn_timer: Timer::from_seconds(0.1, true),
+            despawn_timer: Timer::from_seconds(0.1, TimerMode::Repeating),
             queue: Default::default(),
         }
     }
@@ -154,7 +155,6 @@ fn peg_hit_system(
                 }
                 let hit_tween = Tween::new(
                     EaseFunction::CubicIn,
-                    TweeningType::Once,
                     Duration::from_secs_f32(0.1),
                     TransformScaleLens {
                         start: tr.scale,
@@ -163,7 +163,6 @@ fn peg_hit_system(
                 )
                 .then(Tween::new(
                     EaseFunction::CubicOut,
-                    TweeningType::Once,
                     Duration::from_secs_f32(0.1),
                     TransformScaleLens {
                         end: tr.scale,

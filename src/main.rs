@@ -100,14 +100,14 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
 }
 
 fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
-    commands.spawn_bundle(Camera2dBundle {
+    commands.spawn(Camera2dBundle {
         projection: OrthographicProjection {
             scaling_mode: bevy::render::camera::ScalingMode::FixedVertical(SCREEN_HEIGHT),
             ..Default::default()
         },
         ..Default::default()
     });
-    commands.spawn_bundle(SpriteBundle {
+    commands.spawn(SpriteBundle {
         texture: game_assets.background_image.clone(),
         transform: Transform::from_xyz(0.0, 0.0, -0.01),
         ..Default::default()
@@ -116,7 +116,7 @@ fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
 
 fn spawn_wall(commands: &mut Commands, position: Vec2, width: f32, height: f32) {
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite {
                 custom_size: Some(Vec2::new(width * 2.0, height * 2.0)),
                 color: Color::GRAY,

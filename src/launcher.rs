@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_inspector_egui::Inspectable;
 use bevy_rapier2d::prelude::Velocity;
 use iyes_loopless::prelude::*;
 
@@ -21,7 +20,7 @@ impl Plugin for LauncherPlugin {
     }
 }
 
-#[derive(Component, Inspectable)]
+#[derive(Component, Reflect)]
 pub struct Launcher {
     pub direction: Vec2,
     pub power: f32,
@@ -35,7 +34,7 @@ impl Launcher {
 
 fn setup_ball_launcher(mut commands: Commands, game_assets: Res<GameAssets>) {
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite {
                 ..Default::default()
             },
@@ -74,7 +73,7 @@ fn ball_launcher_system(
         commands.insert_resource(NextState(InGameState::Ball));
         let (tr, launcher) = launcher.single();
         commands
-            .spawn_bundle(BallBundle::new(tr.translation, &game_assets))
+            .spawn(BallBundle::new(tr.translation, &game_assets))
             .insert(Velocity {
                 linvel: launcher.get_impulse(),
                 ..Default::default()
