@@ -1,3 +1,4 @@
+use crate::common::MainCamera;
 use bevy::{prelude::*, utils::HashSet};
 
 pub struct GameInputPlugin;
@@ -38,17 +39,17 @@ fn input_state_system(
     keys: Res<Input<KeyCode>>,
     mouse_buttons: Res<Input<MouseButton>>,
     mut cursor_event_reader: EventReader<CursorMoved>,
-    windows: Query<&Window>,
+    main_camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut input_state: ResMut<GameInput>,
 ) {
     input_state.active_actions.clear();
     input_state.just_active_actions.clear();
 
     if let Some(e) = cursor_event_reader.iter().last() {
-        if let Ok(window) = windows.get(e.window) {
-            let game_x = e.position.x - window.width() / 2.0;
-            let game_y = e.position.y - window.height() / 2.0;
-            input_state.cursor_position = Vec2::new(game_x, game_y)
+        if let Ok((camera, cam_tr)) = main_camera.get_single() {
+            if let Some(pos) = camera.viewport_to_world_2d(cam_tr, e.position) {
+                input_state.cursor_position = pos;
+            };
         }
     }
 

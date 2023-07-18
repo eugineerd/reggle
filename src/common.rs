@@ -14,6 +14,9 @@ pub struct GameAssets {
     pub normal_font: Handle<Font>,
 }
 
+#[derive(Component)]
+pub struct MainCamera;
+
 #[derive(Reflect, Resource)]
 pub struct GameStats {
     pub player_score: usize,

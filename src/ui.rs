@@ -7,8 +7,8 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_ui.after(load_assets))
-            .add_system(update_score_system);
+        app.add_systems(Startup, setup_ui.after(load_assets))
+            .add_systems(Update, update_score_system);
     }
 }
 

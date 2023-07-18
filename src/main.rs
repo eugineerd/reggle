@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use bevy::{prelude::*, utils::Instant};
+use bevy::prelude::*;
 use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -68,7 +68,7 @@ fn main() {
 // Required for CI
 #[cfg(feature = "exit_timeout")]
 fn exit_timeout_system(time: Res<Time>, mut writer: EventWriter<bevy::app::AppExit>) {
-    if Instant::now() - time.startup() > std::time::Duration::from_secs(10) {
+    if bevy::utils::Instant::now() - time.startup() > std::time::Duration::from_secs(10) {
         println!("Didn't crash");
         writer.send(bevy::app::AppExit);
     }
@@ -101,13 +101,16 @@ fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
 }
 
 fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
-    commands.spawn(Camera2dBundle {
-        projection: OrthographicProjection {
-            scaling_mode: bevy::render::camera::ScalingMode::FixedVertical(SCREEN_HEIGHT),
+    commands.spawn((
+        Camera2dBundle {
+            projection: OrthographicProjection {
+                scaling_mode: bevy::render::camera::ScalingMode::FixedVertical(SCREEN_HEIGHT),
+                ..Default::default()
+            },
             ..Default::default()
         },
-        ..Default::default()
-    });
+        MainCamera,
+    ));
     commands.spawn(SpriteBundle {
         texture: game_assets.background_image.clone(),
         transform: Transform::from_xyz(0.0, 0.0, -0.01),
