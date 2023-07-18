@@ -6,31 +6,39 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.9", default-features = false }
+bevy = { version = "0.11", default-features = false, features = [
+    "animation",
+    "bevy_asset",
+    "bevy_scene",
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_gltf",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    "png",
+    "hdr",
+    "zstd",
+    "x11",
+    "ktx2",
+    "filesystem_watcher",
+    "tonemapping_luts",
+    "webgl2",
+] }
 
 # Bevy plugins
-bevy_prototype_lyon = "0.7"
-bevy_kira_audio = "0.13"
-bevy_rapier2d = "0.19"
-bevy-inspector-egui = "0.15.0-pre.0"
-bevy_tweening = "0.6"
-iyes_loopless = { git = "https://github.com/IyesGames/iyes_loopless.git", branch = "main" }
-
-fastrand = "1.7"
+bevy_prototype_lyon = "0.9"
+bevy_kira_audio = { version = "0.16", features = ["ogg"] }
+bevy_rapier2d = "0.22"
+bevy-inspector-egui = "0.19"
+bevy_tweening = "0.8"
+fastrand = "2.0"
 
 [features]
-default = [
-    "bevy/bevy_winit",
-    "bevy/render",
-    "bevy/png",
-    "bevy/wayland",
-    "bevy_kira_audio/ogg",
-]
+dev = ["bevy/bevy_dylib"]
 exit_timeout = []
-
-# Enable only a small amount of optimization in debug mode
-[profile.dev]
-opt-level = 1
 
 # Enable high optimizations for dependencies (incl. Bevy), but not for our code:
 [profile.dev.package."*"]
@@ -39,6 +47,7 @@ opt-level = 3
 # Enable extra optimizations for release
 [profile.release]
 lto = "thin"
+codegen-units = 1
 
 # No optimizations for faster CI builds
 [profile.dev-ci]

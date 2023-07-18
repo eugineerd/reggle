@@ -1,16 +1,15 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::Instant};
 use bevy_kira_audio::AudioPlugin;
 use bevy_prototype_lyon::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy_tweening::TweeningPlugin;
-use iyes_loopless::prelude::*;
 
 const PLAYER_BALL_RADIUS: f32 = 10.0;
 const LAUNCHER_BASE_POWER: f32 = 300.0;
-const PEG_RADIUS: f32 = 12.0;
+const PEG_RADIUS: f32 = 13.0;
 const PIXELS_PER_METER: f32 = 100.0;
 const SCREEN_HEIGHT: f32 = 1000.0;
 const ARENA_SIZE: Vec2 = Vec2::new(1000.0, 800.0);
@@ -28,50 +27,52 @@ mod ui;
 use common::*;
 
 fn main() {
-    App::new()
-        .add_loopless_state(GameState::InGame)
-        .add_loopless_state(InGameState::Launcher)
-        .add_plugins(DefaultPlugins)
-        .add_plugin(AudioPlugin)
-        .add_plugin(ShapePlugin)
-        .add_plugin(TweeningPlugin)
+    let mut app = App::new();
+
+    app.add_state::<GameState>()
+        .add_state::<InGameState>()
+        .insert_resource(GameAssets::default())
+        .insert_resource(GameStats::default())
         .insert_resource(ClearColor(Color::BLACK))
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(
-            PIXELS_PER_METER,
-        ))
         .insert_resource(RapierConfiguration {
             gravity: Vec2::new(0.0, -9.81 * 24.0),
             ..Default::default()
         })
-        // .add_plugin(debug::DebugPlugin)
-        .add_plugin(input::GameInputPlugin)
-        .add_plugin(ball::BallPlugin)
-        .add_plugin(peg::PegPlugin)
-        .add_plugin(debug::DebugPlugin)
-        .add_plugin(launcher::LauncherPlugin)
-        .add_plugin(trajectory::TrajectoryPlugin)
-        .add_plugin(ui::UiPlugin)
-        .insert_resource(GameAssets::default())
-        .insert_resource(GameStats::default())
-        .add_system(exit_timeout_system)
-        .add_startup_system(load_assets)
-        .add_startup_system(setup_graphics.after(load_assets))
-        .add_startup_system(setup_level)
-        .run();
+        .add_plugins((
+            // Engine
+            DefaultPlugins,
+            AudioPlugin,
+            ShapePlugin,
+            TweeningPlugin,
+            RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(PIXELS_PER_METER),
+            // Game
+            input::GameInputPlugin,
+            ball::BallPlugin,
+            peg::PegPlugin,
+            debug::DebugPlugin,
+            launcher::LauncherPlugin,
+            trajectory::TrajectoryPlugin,
+            ui::UiPlugin,
+        ))
+        .add_systems(
+            Startup,
+            (load_assets, (setup_graphics, setup_level)).chain(),
+        );
+
+    #[cfg(feature = "exit_timeout")]
+    app.add_systems(Update, exit_timeout_system);
+
+    app.run();
 }
 
 // Required for CI
 #[cfg(feature = "exit_timeout")]
 fn exit_timeout_system(time: Res<Time>, mut writer: EventWriter<bevy::app::AppExit>) {
-    if time.time_since_startup() > std::time::Duration::from_secs(10) {
+    if Instant::now() - time.startup() > std::time::Duration::from_secs(10) {
         println!("Didn't crash");
         writer.send(bevy::app::AppExit);
     }
 }
-
-// Required for CI
-#[cfg(not(feature = "exit_timeout"))]
-fn exit_timeout_system() {}
 
 fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
     assets.peg_hit_sound = vec![

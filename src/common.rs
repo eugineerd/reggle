@@ -29,14 +29,16 @@ impl Default for GameStats {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, States, Default)]
 pub enum GameState {
     _Menu,
+    #[default]
     InGame,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, States, Default)]
 pub enum InGameState {
+    #[default]
     Launcher,
     Ball,
     Cleanup,

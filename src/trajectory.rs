@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
-use bevy_prototype_lyon::prelude::{DrawMode, GeometryBuilder, PathBuilder, StrokeMode};
+use bevy_prototype_lyon::prelude::{Fill, GeometryBuilder, PathBuilder, ShapeBundle, Stroke};
 use bevy_prototype_lyon::shapes::Circle;
 use bevy_rapier2d::na;
 use bevy_rapier2d::prelude::{Collider, RapierConfiguration, Restitution, RigidBody};
@@ -9,7 +9,6 @@ use bevy_rapier2d::rapier::prelude::{
     IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsPipeline,
     RigidBodyBuilder, RigidBodySet,
 };
-use iyes_loopless::prelude::*;
 
 use crate::ball::BallPhysicsBundle;
 use crate::common::{GameState, InGameState};
@@ -21,21 +20,17 @@ pub struct TrajectoryPlugin;
 
 impl Plugin for TrajectoryPlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::InGame, init_trajectory_world)
-            .add_system(
-                draw_trajectory_system
-                    .run_in_state(InGameState::Launcher)
-                    .label("draw_trajectory_system"),
+        app.add_systems(OnEnter(GameState::InGame), init_trajectory_world)
+            .add_systems(
+                Update,
+                (draw_trajectory_system, despawn_trajectory_line)
+                    .chain()
+                    .run_if(in_state(InGameState::Launcher)),
             )
-            .add_system(
-                despawn_trajectory_line
-                    .run_in_state(InGameState::Launcher)
-                    .after("draw_trajectory_system"),
-            )
-            .add_exit_system(InGameState::Launcher, despawn_trajectory_line)
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                sync_colliders_system.run_in_state(GameState::InGame),
+            .add_systems(OnExit(InGameState::Launcher), despawn_trajectory_line)
+            .add_systems(
+                PostUpdate,
+                sync_colliders_system.run_if(in_state(GameState::InGame)),
             );
     }
 }
@@ -172,6 +167,7 @@ impl TrajectoryWorld {
                 &mut self.impulse_joint_set,
                 &mut self.multibody_joint_set,
                 &mut self.ccd_solver,
+                None,
                 &(),
                 &(),
             );
@@ -228,7 +224,7 @@ pub fn sync_colliders_system(
         (Entity, &Transform),
         (Changed<Transform>, With<Collider>, Without<RigidBody>),
     >,
-    removed_colliders: RemovedComponents<Collider>,
+    mut removed_colliders: RemovedComponents<Collider>,
 ) {
     changed_colliders.for_each(|(entity, collider)| {
         trajectory_world.update_collider(entity, collider);
@@ -277,26 +273,28 @@ fn draw_trajectory_system(
         }
         let line = path_builder.build();
 
-        commands
-            .spawn(GeometryBuilder::build_as(
-                &line,
-                DrawMode::Stroke(StrokeMode::new(Color::WHITE, 2.0)),
-                Transform::default(),
-            ))
-            .insert(TrajectoryLine);
+        commands.spawn((
+            TrajectoryLine,
+            ShapeBundle {
+                path: GeometryBuilder::build_as(&line),
+                ..Default::default()
+            },
+            Fill::color(Color::WHITE),
+        ));
 
         for point in collision_points.iter() {
             let shape = Circle {
                 radius: PLAYER_BALL_RADIUS,
                 center: *point,
             };
-            commands
-                .spawn(GeometryBuilder::build_as(
-                    &shape,
-                    DrawMode::Fill(bevy_prototype_lyon::prelude::FillMode::color(Color::RED)),
-                    Transform::default(),
-                ))
-                .insert(TrajectoryLine);
+            commands.spawn((
+                TrajectoryLine,
+                ShapeBundle {
+                    path: GeometryBuilder::build_as(&shape),
+                    ..Default::default()
+                },
+                Fill::color(Color::RED),
+            ));
         }
     }
 }

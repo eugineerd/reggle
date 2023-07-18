@@ -4,7 +4,6 @@ use bevy_kira_audio::{Audio, AudioControl};
 use bevy_rapier2d::prelude::*;
 use bevy_tweening::lens::TransformScaleLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
-use iyes_loopless::prelude::*;
 use std::collections::VecDeque;
 use std::time::Duration;
 
@@ -17,9 +16,14 @@ pub struct PegPlugin;
 impl Plugin for PegPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PegsToDespawn::default())
-            .add_enter_system(GameState::InGame, spawn_peg_system)
-            .add_system(peg_hit_system.run_in_state(InGameState::Ball))
-            .add_system(peg_despawn_system.run_in_state(InGameState::Cleanup));
+            .add_systems(OnEnter(GameState::InGame), spawn_peg_system)
+            .add_systems(
+                Update,
+                (
+                    peg_hit_system.run_if(in_state(InGameState::Ball)),
+                    peg_despawn_system.run_if(in_state(InGameState::Cleanup)),
+                ),
+            );
     }
 }
 
@@ -132,7 +136,7 @@ fn peg_despawn_system(
         pegs_to_despawn.despawn_timer.reset();
         pegs_to_despawn.queue.clear();
         pegs_to_despawn.set.clear();
-        commands.insert_resource(NextState(InGameState::Launcher));
+        commands.insert_resource(NextState(Some(InGameState::Launcher)));
     }
 }
 

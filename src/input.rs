@@ -5,7 +5,7 @@ pub struct GameInputPlugin;
 impl Plugin for GameInputPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(GameInput::default())
-            .add_system_to_stage(CoreStage::PreUpdate, input_state_system);
+            .add_systems(PreUpdate, input_state_system);
     }
 }
 
@@ -38,14 +38,14 @@ fn input_state_system(
     keys: Res<Input<KeyCode>>,
     mouse_buttons: Res<Input<MouseButton>>,
     mut cursor_event_reader: EventReader<CursorMoved>,
-    windows: Res<Windows>,
+    windows: Query<&Window>,
     mut input_state: ResMut<GameInput>,
 ) {
     input_state.active_actions.clear();
     input_state.just_active_actions.clear();
 
     if let Some(e) = cursor_event_reader.iter().last() {
-        if let Some(window) = windows.get(e.id) {
+        if let Ok(window) = windows.get(e.window) {
             let game_x = e.position.x - window.width() / 2.0;
             let game_y = e.position.y - window.height() / 2.0;
             input_state.cursor_position = Vec2::new(game_x, game_y)
@@ -60,10 +60,10 @@ fn input_state_system(
         return;
     }
 
-    if keys.pressed(KeyCode::LControl) {
+    if keys.pressed(KeyCode::ControlLeft) {
         input_state.active_actions.insert(GameAction::MoveLauncher);
     }
-    if keys.just_pressed(KeyCode::LControl) {
+    if keys.just_pressed(KeyCode::ControlLeft) {
         input_state
             .just_active_actions
             .insert(GameAction::MoveLauncher);

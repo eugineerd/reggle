@@ -1,7 +1,6 @@
 use bevy::{prelude::*, utils::HashSet};
 use bevy_kira_audio::{Audio, AudioControl};
 use bevy_rapier2d::prelude::*;
-use iyes_loopless::prelude::*;
 
 use crate::common::{GameState, InGameState};
 use crate::{common::GameAssets, PLAYER_BALL_RADIUS};
@@ -11,28 +10,23 @@ pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<BallCollisionEvent>()
-            .add_system(
-                ball_collision_system
-                    .run_in_state(InGameState::Ball)
-                    .label("ball_collision_system"),
+        app.add_event::<BallCollisionEvent>().add_systems(
+            Update,
+            (
+                ball_collision_system.run_if(in_state(InGameState::Ball)),
+                ball_despawn_system.run_if(in_state(InGameState::Ball)),
+                ball_hitsound_system,
             )
-            .add_system(
-                ball_despawn_system
-                    .run_in_state(InGameState::Ball)
-                    .before("ball_collision_system"),
-            )
-            .add_system(
-                ball_hitsound_system
-                    .run_in_state(GameState::InGame)
-                    .after("ball_collision_system"),
-            );
+                .chain()
+                .run_if(in_state(GameState::InGame)),
+        );
     }
 }
 
 #[derive(Component)]
 pub struct Ball;
 
+#[derive(Event)]
 pub struct BallCollisionEvent(pub Entity);
 
 #[derive(Bundle)]
@@ -66,7 +60,7 @@ impl BallPhysicsBundle {
 
 #[derive(Bundle)]
 pub struct BallBundle {
-    #[bundle]
+    #[bundle()]
     pub ball_physics: BallPhysicsBundle,
 
     // SpriteBundle without tranform
@@ -105,7 +99,7 @@ impl BallBundle {
 
 fn ball_despawn_system(mut commands: Commands, balls: Query<(Entity, &Transform), With<Ball>>) {
     if balls.is_empty() {
-        commands.insert_resource(NextState(InGameState::Cleanup));
+        commands.insert_resource(NextState(Some(InGameState::Cleanup)));
         return;
     }
     for (entity, tr) in balls.iter() {

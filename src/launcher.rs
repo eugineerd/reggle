@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::Velocity;
-use iyes_loopless::prelude::*;
 
 use crate::common::{GameState, InGameState};
 use crate::LAUNCHER_BASE_POWER;
@@ -14,9 +13,15 @@ pub struct LauncherPlugin;
 
 impl Plugin for LauncherPlugin {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::InGame, setup_ball_launcher)
-            .add_system(launcher_control_system.run_in_state(GameState::InGame))
-            .add_system(ball_launcher_system.run_in_state(InGameState::Launcher));
+        app.add_systems(OnEnter(GameState::InGame), setup_ball_launcher)
+            .add_systems(
+                Update,
+                (
+                    launcher_control_system,
+                    ball_launcher_system.run_if(in_state(InGameState::Launcher)),
+                )
+                    .run_if(in_state(GameState::InGame)),
+            );
     }
 }
 
@@ -70,7 +75,7 @@ fn ball_launcher_system(
     launcher: Query<(&Transform, &Launcher)>,
 ) {
     if input_state.just_active(GameAction::Shoot) {
-        commands.insert_resource(NextState(InGameState::Ball));
+        commands.insert_resource(NextState(Some(InGameState::Ball)));
         let (tr, launcher) = launcher.single();
         commands
             .spawn(BallBundle::new(tr.translation, &game_assets))

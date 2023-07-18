@@ -9,9 +9,11 @@ pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(LogDiagnosticsPlugin::default())
-            .add_plugin(FrameTimeDiagnosticsPlugin)
-            .add_plugin(WorldInspectorPlugin)
-            .add_plugin(RapierDebugRenderPlugin::default());
+        app.add_plugins((
+            LogDiagnosticsPlugin::default(),
+            FrameTimeDiagnosticsPlugin,
+            WorldInspectorPlugin::default(),
+            RapierDebugRenderPlugin::default(),
+        ));
     }
 }
