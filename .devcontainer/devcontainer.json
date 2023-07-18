@@ -13,10 +13,12 @@
 			"target": "/usr/local/cargo",
 			"type": "volume"
 		},
-		"type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix"
+		"type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix",
+		"type=bind,src=/run/user/1000/pipewire-0,dst=/tmp/pipewire-0"
 	],
 	"remoteEnv": {
-		"DISPLAY": "${localEnv:DISPLAY}"
+		"DISPLAY": "${localEnv:DISPLAY}",
+		"XDG_RUNTIME_DIR": "/tmp"
 	},
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
