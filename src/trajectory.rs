@@ -279,7 +279,7 @@ fn draw_trajectory_system(
                 path: GeometryBuilder::build_as(&line),
                 ..Default::default()
             },
-            Fill::color(Color::WHITE),
+            Stroke::new(Color::WHITE, 2.0),
         ));
 
         for point in collision_points.iter() {
