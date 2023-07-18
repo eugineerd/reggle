@@ -36,7 +36,6 @@ pub struct BallPhysicsBundle {
     pub restitution: Restitution,
     pub ccd: Ccd,
     pub transform: Transform,
-    pub mass: AdditionalMassProperties,
 }
 
 impl BallPhysicsBundle {
@@ -50,10 +49,6 @@ impl BallPhysicsBundle {
             },
             ccd: Ccd::enabled(),
             transform: Transform::from_translation(translation),
-            mass: AdditionalMassProperties::MassProperties(MassProperties {
-                mass: 1.0,
-                ..Default::default()
-            }),
         }
     }
 }

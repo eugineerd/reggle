@@ -8,7 +8,7 @@ use bevy_rapier2d::prelude::*;
 use bevy_tweening::TweeningPlugin;
 
 const PLAYER_BALL_RADIUS: f32 = 10.0;
-const LAUNCHER_BASE_POWER: f32 = 300.0;
+const LAUNCHER_BASE_POWER: f32 = 500.0;
 const PEG_RADIUS: f32 = 13.0;
 const PIXELS_PER_METER: f32 = 100.0;
 const SCREEN_HEIGHT: f32 = 1000.0;
@@ -35,7 +35,7 @@ fn main() {
         .insert_resource(GameStats::default())
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(RapierConfiguration {
-            gravity: Vec2::new(0.0, -9.81 * 24.0),
+            gravity: Vec2::new(0., -500.),
             ..Default::default()
         })
         .add_plugins((
@@ -44,7 +44,7 @@ fn main() {
             AudioPlugin,
             ShapePlugin,
             TweeningPlugin,
-            RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(PIXELS_PER_METER),
+            RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.),
             // Game
             input::GameInputPlugin,
             ball::BallPlugin,
