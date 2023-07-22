@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crate::ball::BallCollisionEvent;
 use crate::common::{GameState, GameStats, InGameState};
-use crate::{GameAssets, PEG_RADIUS};
+use crate::{assets::GameAssets, PEG_RADIUS};
 
 pub struct PegPlugin;
 
@@ -86,7 +86,7 @@ impl PegBundle {
 }
 
 fn spawn_peg_system(world: &mut World) {
-    let image_handle = world.resource::<GameAssets>().peg_image.clone();
+    let image_handle = world.resource::<GameAssets>().peg.image.clone();
     let mut pegs_entities: Vec<Entity> = world
         .spawn_batch((0..=14).flat_map(move |i| {
             (1..=7).map({
@@ -127,7 +127,7 @@ fn peg_despawn_system(
             PEG_RADIUS * 2.0 + pegs_to_despawn.despawn_timer.percent() * PEG_RADIUS * 1.5;
         peg_sprites.get_mut(*peg).unwrap().custom_size = Some(Vec2::splat(inflated_size));
         if pegs_to_despawn.despawn_timer.just_finished() {
-            audio.play(game_assets.peg_pop_sound.clone());
+            audio.play(game_assets.peg.pop_sound.clone());
             game_stats.player_score += 1;
             commands.entity(*peg).despawn();
             pegs_to_despawn.queue.pop_front();
@@ -151,7 +151,7 @@ fn peg_hit_system(
     for event in hit_by_ball.iter() {
         if let Ok((entity, mut peg_image, mut peg_sprite, tr)) = pegs.get_mut(event.0) {
             if !pegs_to_despawn.set.contains(&entity) {
-                *peg_image = game_assets.peg_hit_image.clone();
+                *peg_image = game_assets.peg.hit_image.clone();
                 if peg_sprite.color == Color::ORANGE {
                     peg_sprite.color = Color::ORANGE_RED;
                 } else {
@@ -174,8 +174,8 @@ fn peg_hit_system(
                     },
                 ));
                 commands.entity(entity).insert(Animator::new(hit_tween));
-                let idx = fastrand::usize(..game_assets.peg_hit_sound.len());
-                audio.play(game_assets.peg_hit_sound[idx].clone());
+                let idx = fastrand::usize(..game_assets.peg.hit_sound.len());
+                audio.play(game_assets.peg.hit_sound[idx].clone());
                 pegs_to_despawn.set.insert(entity);
                 pegs_to_despawn.queue.push_back(entity);
             }

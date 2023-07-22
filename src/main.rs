@@ -15,6 +15,7 @@ const SCREEN_HEIGHT: f32 = 1000.0;
 const ARENA_SIZE: Vec2 = Vec2::new(1000.0, 800.0);
 const ARENA_POS: Vec2 = Vec2::new(0.0, -100.0);
 
+mod assets;
 mod ball;
 mod common;
 mod debug;
@@ -31,7 +32,7 @@ fn main() {
 
     app.add_state::<GameState>()
         .add_state::<InGameState>()
-        .insert_resource(GameAssets::default())
+        .insert_resource(assets::GameAssets::default())
         .insert_resource(GameStats::default())
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(RapierConfiguration {
@@ -46,6 +47,7 @@ fn main() {
             TweeningPlugin,
             RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.),
             // Game
+            assets::AssetsPlugin,
             input::GameInputPlugin,
             ball::BallPlugin,
             peg::PegPlugin,
@@ -54,10 +56,7 @@ fn main() {
             trajectory::TrajectoryPlugin,
             ui::UiPlugin,
         ))
-        .add_systems(
-            Startup,
-            (load_assets, (setup_graphics, setup_level)).chain(),
-        );
+        .add_systems(OnEnter(GameState::InGame), (setup_graphics, setup_level));
 
     #[cfg(feature = "exit_timeout")]
     app.add_systems(Update, exit_timeout_system);
@@ -74,33 +73,7 @@ fn exit_timeout_system(time: Res<Time>, mut writer: EventWriter<bevy::app::AppEx
     }
 }
 
-fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
-    assets.peg_hit_sound = vec![
-        asset_server.load("sfx/peg/impactGlass_medium_000.ogg"),
-        asset_server.load("sfx/peg/impactGlass_medium_001.ogg"),
-        asset_server.load("sfx/peg/impactGlass_medium_002.ogg"),
-        asset_server.load("sfx/peg/impactGlass_medium_003.ogg"),
-        asset_server.load("sfx/peg/impactGlass_medium_004.ogg"),
-    ];
-    assets.peg_pop_sound = asset_server.load("sfx/pop.ogg");
-
-    assets.peg_image = asset_server.load("sprites/peg.png");
-    assets.peg_hit_image = asset_server.load("sprites/peg_hit.png");
-
-    assets.ball_hit_sound = vec![
-        asset_server.load("sfx/ball/impactSoft_heavy_001.ogg"),
-        asset_server.load("sfx/ball/impactSoft_heavy_002.ogg"),
-        asset_server.load("sfx/ball/impactSoft_heavy_003.ogg"),
-        asset_server.load("sfx/ball/impactSoft_heavy_004.ogg"),
-    ];
-
-    assets.ball_image = asset_server.load("sprites/ball.png");
-    assets.launcher_image = asset_server.load("sprites/launcher.png");
-    assets.background_image = asset_server.load("sprites/background.png");
-    assets.normal_font = asset_server.load("fonts/NotoSans.ttf");
-}
-
-fn setup_graphics(mut commands: Commands, game_assets: Res<GameAssets>) {
+fn setup_graphics(mut commands: Commands, game_assets: Res<assets::GameAssets>) {
     commands.spawn((
         Camera2dBundle {
             projection: OrthographicProjection {

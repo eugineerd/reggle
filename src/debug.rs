@@ -12,7 +12,7 @@ impl Plugin for DebugPlugin {
         app.add_plugins((
             LogDiagnosticsPlugin::default(),
             FrameTimeDiagnosticsPlugin,
-            WorldInspectorPlugin::default(),
+            WorldInspectorPlugin::new(),
             RapierDebugRenderPlugin::default(),
         ));
     }

@@ -4,8 +4,8 @@ use bevy_rapier2d::prelude::Velocity;
 use crate::common::{GameState, InGameState};
 use crate::LAUNCHER_BASE_POWER;
 use crate::{
+    assets::GameAssets,
     ball::BallBundle,
-    common::GameAssets,
     input::{GameAction, GameInput},
 };
 
@@ -25,7 +25,8 @@ impl Plugin for LauncherPlugin {
     }
 }
 
-#[derive(Component, Reflect)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component, Default)]
 pub struct Launcher {
     pub direction: Vec2,
     pub power: f32,
@@ -38,20 +39,21 @@ impl Launcher {
 }
 
 fn setup_ball_launcher(mut commands: Commands, game_assets: Res<GameAssets>) {
-    commands
-        .spawn(SpriteBundle {
+    commands.spawn((
+        SpriteBundle {
             sprite: Sprite {
                 ..Default::default()
             },
-            texture: game_assets.launcher_image.clone(),
+            texture: game_assets.launcher.image.clone(),
+            transform: Transform::from_xyz(0.0, 150.0, 1.0),
             ..Default::default()
-        })
-        .insert(Name::new("Launcher"))
-        .insert(Transform::from_xyz(0.0, 150.0, 1.0))
-        .insert(Launcher {
+        },
+        Name::new("Launcher"),
+        Launcher {
             direction: Vec2::ZERO,
             power: LAUNCHER_BASE_POWER,
-        });
+        },
+    ));
 }
 
 fn launcher_control_system(

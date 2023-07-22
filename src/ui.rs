@@ -1,14 +1,18 @@
 use bevy::prelude::*;
 
-use crate::common::GameAssets;
-use crate::{load_assets, GameStats};
+use crate::assets::GameAssets;
+use crate::common::GameState;
+use crate::GameStats;
 
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_ui.after(load_assets))
-            .add_systems(Update, update_score_system);
+        app.add_systems(OnEnter(GameState::InGame), setup_ui)
+            .add_systems(
+                Update,
+                update_score_system.run_if(in_state(GameState::InGame)),
+            );
     }
 }
 

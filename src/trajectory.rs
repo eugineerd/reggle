@@ -25,9 +25,13 @@ impl Plugin for TrajectoryPlugin {
                 Update,
                 (draw_trajectory_system, despawn_trajectory_line)
                     .chain()
+                    .run_if(in_state(GameState::InGame))
                     .run_if(in_state(InGameState::Launcher)),
             )
-            .add_systems(OnExit(InGameState::Launcher), despawn_trajectory_line)
+            .add_systems(
+                OnExit(InGameState::Launcher),
+                despawn_trajectory_line.run_if(in_state(GameState::InGame)),
+            )
             .add_systems(
                 PostUpdate,
                 sync_colliders_system.run_if(in_state(GameState::InGame)),
@@ -277,6 +281,7 @@ fn draw_trajectory_system(
             TrajectoryLine,
             ShapeBundle {
                 path: GeometryBuilder::build_as(&line),
+                transform: Transform::from_xyz(0., 0., -0.0001),
                 ..Default::default()
             },
             Stroke::new(Color::WHITE, 2.0),

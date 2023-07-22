@@ -1,18 +1,4 @@
 use bevy::prelude::*;
-use bevy_kira_audio::AudioSource;
-
-#[derive(Default, Resource)]
-pub struct GameAssets {
-    pub peg_hit_sound: Vec<Handle<AudioSource>>,
-    pub peg_image: Handle<Image>,
-    pub peg_hit_image: Handle<Image>,
-    pub peg_pop_sound: Handle<AudioSource>,
-    pub ball_hit_sound: Vec<Handle<AudioSource>>,
-    pub ball_image: Handle<Image>,
-    pub launcher_image: Handle<Image>,
-    pub background_image: Handle<Image>,
-    pub normal_font: Handle<Font>,
-}
 
 #[derive(Component)]
 pub struct MainCamera;
@@ -34,9 +20,21 @@ impl Default for GameStats {
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, States, Default)]
 pub enum GameState {
-    _Menu,
     #[default]
+    LoadingAssets,
+    Menu,
     InGame,
+}
+
+impl GameState {
+    pub fn next(&self) -> Self {
+        use GameState::*;
+        match *self {
+            LoadingAssets => InGame,
+            Menu => InGame,
+            InGame => InGame,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, States, Default)]

@@ -3,7 +3,7 @@ use bevy_kira_audio::{Audio, AudioControl};
 use bevy_rapier2d::prelude::*;
 
 use crate::common::{GameState, InGameState};
-use crate::{common::GameAssets, PLAYER_BALL_RADIUS};
+use crate::{assets::GameAssets, PLAYER_BALL_RADIUS};
 use crate::{ARENA_POS, ARENA_SIZE};
 
 pub struct BallPlugin;
@@ -82,7 +82,7 @@ impl BallBundle {
                 ..Default::default()
             },
             global_transform: Default::default(),
-            texture: game_assets.ball_image.clone(),
+            texture: game_assets.ball.image.clone(),
             visibility: Default::default(),
             computed_visibility: Default::default(),
 
@@ -144,7 +144,9 @@ pub fn ball_hitsound_system(
     audio: Res<Audio>,
 ) {
     for _ in hit_by_ball.iter() {
-        let idx = fastrand::usize(..game_assets.ball_hit_sound.len());
-        audio.play(game_assets.ball_hit_sound[idx].clone());
+        let idx = fastrand::usize(..game_assets.ball.hit_sound.len());
+        audio
+            .play(game_assets.ball.hit_sound[idx].clone())
+            .with_volume(0.5);
     }
 }
