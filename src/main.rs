@@ -22,6 +22,7 @@ mod debug;
 mod input;
 mod launcher;
 mod peg;
+mod sounds;
 mod trajectory;
 mod ui;
 
@@ -55,6 +56,7 @@ fn main() {
             launcher::LauncherPlugin,
             trajectory::TrajectoryPlugin,
             ui::UiPlugin,
+            sounds::SoundsPlugin,
         ))
         .add_systems(OnEnter(GameState::InGame), (setup_graphics, setup_level));
 

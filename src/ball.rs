@@ -3,6 +3,7 @@ use bevy_kira_audio::{Audio, AudioControl};
 use bevy_rapier2d::prelude::*;
 
 use crate::common::{GameState, InGameState};
+use crate::sounds::{CollisionSound, SoundType};
 use crate::{assets::GameAssets, PLAYER_BALL_RADIUS};
 use crate::{ARENA_POS, ARENA_SIZE};
 
@@ -15,7 +16,6 @@ impl Plugin for BallPlugin {
             (
                 ball_collision_system.run_if(in_state(InGameState::Ball)),
                 ball_despawn_system.run_if(in_state(InGameState::Ball)),
-                ball_hitsound_system,
             )
                 .chain()
                 .run_if(in_state(GameState::InGame)),
@@ -65,6 +65,7 @@ pub struct BallBundle {
     pub visibility: Visibility,
     pub computed_visibility: ComputedVisibility,
 
+    pub collision_sound: CollisionSound,
     pub name: Name,
     pub ball: Ball,
 }
@@ -86,6 +87,11 @@ impl BallBundle {
             visibility: Default::default(),
             computed_visibility: Default::default(),
 
+            collision_sound: CollisionSound {
+                sound: SoundType::Random(game_assets.ball.hit_sound.clone()),
+                volume: 0.5,
+                ..Default::default()
+            },
             name: Name::new("Ball"),
             ball: Ball,
         }
@@ -136,17 +142,4 @@ pub fn ball_collision_system(
         }
     });
     last_contact_entities.retain(|e| contact_entities.contains(e));
-}
-
-pub fn ball_hitsound_system(
-    game_assets: Res<GameAssets>,
-    mut hit_by_ball: EventReader<BallCollisionEvent>,
-    audio: Res<Audio>,
-) {
-    for _ in hit_by_ball.iter() {
-        let idx = fastrand::usize(..game_assets.ball.hit_sound.len());
-        audio
-            .play(game_assets.ball.hit_sound[idx].clone())
-            .with_volume(0.5);
-    }
 }

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::utils::HashSet;
-use bevy_kira_audio::{Audio, AudioControl};
+use bevy_kira_audio::{Audio, AudioControl, AudioSource};
 use bevy_rapier2d::prelude::*;
 use bevy_tweening::lens::TransformScaleLens;
 use bevy_tweening::{Animator, EaseFunction, Tween};
@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use crate::ball::BallCollisionEvent;
 use crate::common::{GameState, GameStats, InGameState};
+use crate::sounds::{play_collision_sound, CollisionSound, SoundType};
 use crate::{assets::GameAssets, PEG_RADIUS};
 
 pub struct PegPlugin;
@@ -20,7 +21,9 @@ impl Plugin for PegPlugin {
             .add_systems(
                 Update,
                 (
-                    peg_hit_system.run_if(in_state(InGameState::Ball)),
+                    peg_hit_system
+                        .run_if(in_state(InGameState::Ball))
+                        .after(play_collision_sound),
                     peg_despawn_system.run_if(in_state(InGameState::Cleanup)),
                 ),
             );
@@ -63,11 +66,16 @@ pub struct PegBundle {
     pub visibility: Visibility,
     pub computed_visibility: ComputedVisibility,
     pub name: Name,
+    pub collision_sound: CollisionSound,
     pub peg: Peg,
 }
 
 impl PegBundle {
-    pub fn new(transform: Transform, image_handle: Handle<Image>) -> Self {
+    pub fn new(
+        transform: Transform,
+        image_handle: Handle<Image>,
+        collision_sounds: &[Handle<AudioSource>],
+    ) -> Self {
         Self {
             collider: Collider::ball(PEG_RADIUS),
             transform,
@@ -80,6 +88,10 @@ impl PegBundle {
             visibility: Default::default(),
             computed_visibility: Default::default(),
             name: Name::new("Peg"),
+            collision_sound: CollisionSound {
+                sound: SoundType::Random(Vec::from(collision_sounds)),
+                ..Default::default()
+            },
             peg: Peg,
         }
     }
@@ -87,17 +99,19 @@ impl PegBundle {
 
 fn spawn_peg_system(world: &mut World) {
     let image_handle = world.resource::<GameAssets>().peg.image.clone();
+    let sounds_handle = world.resource::<GameAssets>().peg.hit_sound.clone();
     let mut pegs_entities: Vec<Entity> = world
-        .spawn_batch((0..=14).flat_map(move |i| {
+        .spawn_batch((0..=14).flat_map(|i| {
             (1..=7).map({
-                let image_handle = image_handle.clone();
+                let image_handle = &image_handle;
+                let sounds_handle = &sounds_handle;
                 move |j| {
                     let transform = Transform::from_xyz(
                         (14 / 2 - i) as f32 * PEG_RADIUS * 5.0,
                         -j as f32 * PEG_RADIUS * 5.0,
                         0.0,
                     );
-                    PegBundle::new(transform, image_handle.clone())
+                    PegBundle::new(transform, image_handle.clone(), sounds_handle)
                 }
             })
         }))
@@ -144,12 +158,20 @@ fn peg_hit_system(
     mut commands: Commands,
     mut hit_by_ball: EventReader<BallCollisionEvent>,
     game_assets: Res<GameAssets>,
-    audio: Res<Audio>,
-    mut pegs: Query<(Entity, &mut Handle<Image>, &mut Sprite, &Transform), With<Peg>>,
+    mut pegs: Query<
+        (
+            Entity,
+            &mut Handle<Image>,
+            &mut Sprite,
+            &Transform,
+            &mut CollisionSound,
+        ),
+        With<Peg>,
+    >,
     mut pegs_to_despawn: ResMut<PegsToDespawn>,
 ) {
     for event in hit_by_ball.iter() {
-        if let Ok((entity, mut peg_image, mut peg_sprite, tr)) = pegs.get_mut(event.0) {
+        if let Ok((entity, mut peg_image, mut peg_sprite, tr, mut cs)) = pegs.get_mut(event.0) {
             if !pegs_to_despawn.set.contains(&entity) {
                 *peg_image = game_assets.peg.hit_image.clone();
                 if peg_sprite.color == Color::ORANGE {
@@ -157,6 +179,7 @@ fn peg_hit_system(
                 } else {
                     peg_sprite.color = Color::rgb(0.5, 0.6, 1.0);
                 }
+                cs.sound = SoundType::None;
                 let hit_tween = Tween::new(
                     EaseFunction::CubicIn,
                     Duration::from_secs_f32(0.1),
@@ -174,8 +197,6 @@ fn peg_hit_system(
                     },
                 ));
                 commands.entity(entity).insert(Animator::new(hit_tween));
-                let idx = fastrand::usize(..game_assets.peg.hit_sound.len());
-                audio.play(game_assets.peg.hit_sound[idx].clone());
                 pegs_to_despawn.set.insert(entity);
                 pegs_to_despawn.queue.push_back(entity);
             }
