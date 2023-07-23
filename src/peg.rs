@@ -97,33 +97,45 @@ impl PegBundle {
     }
 }
 
-fn spawn_peg_system(world: &mut World) {
-    let image_handle = world.resource::<GameAssets>().peg.image.clone();
-    let sounds_handle = world.resource::<GameAssets>().peg.hit_sound.clone();
-    let mut pegs_entities: Vec<Entity> = world
-        .spawn_batch((0..=14).flat_map(|i| {
-            (1..=7).map({
-                let image_handle = &image_handle;
-                let sounds_handle = &sounds_handle;
-                move |j| {
-                    let transform = Transform::from_xyz(
-                        (14 / 2 - i) as f32 * PEG_RADIUS * 5.0,
-                        -j as f32 * PEG_RADIUS * 5.0,
-                        0.0,
-                    );
-                    PegBundle::new(transform, image_handle.clone(), sounds_handle)
-                }
-            })
-        }))
-        .collect();
+fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
+    let pegs_count = 15 * 7;
+    let target_pegs_count = pegs_count / 10;
 
-    fastrand::shuffle(&mut pegs_entities);
-    let target_pegs_num = world.resource::<GameStats>().target_pegs_left;
-    for e in pegs_entities.iter().take(target_pegs_num) {
-        if let Some(mut sprite) = world.entity_mut(*e).insert(TargetPeg).get_mut::<Sprite>() {
-            sprite.color = Color::ORANGE
+    let image_handle = game_assets.peg.image.clone();
+    let sounds_handle = game_assets.peg.hit_sound.clone();
+
+    let mut transforms = Vec::with_capacity(pegs_count);
+    for i in 0..15 {
+        for j in 1..8 {
+            let t = Transform::from_xyz(
+                (14 / 2 - i) as f32 * PEG_RADIUS * 5.0,
+                -j as f32 * PEG_RADIUS * 5.0,
+                0.0,
+            );
+            transforms.push(t);
         }
     }
+
+    fastrand::shuffle(&mut transforms);
+
+    let mut pegs = Vec::with_capacity(pegs_count - target_pegs_count);
+    let mut target_pegs = Vec::with_capacity(target_pegs_count);
+    for (i, t) in transforms.iter().enumerate() {
+        if i <= target_pegs_count {
+            let mut b = PegBundle::new(t.clone(), image_handle.clone(), &sounds_handle);
+            b.sprite.color = Color::ORANGE;
+            target_pegs.push((b, TargetPeg))
+        } else {
+            pegs.push(PegBundle::new(
+                t.clone(),
+                image_handle.clone(),
+                &sounds_handle,
+            ))
+        }
+    }
+
+    commands.spawn_batch(pegs);
+    commands.spawn_batch(target_pegs);
 }
 
 fn peg_despawn_system(
