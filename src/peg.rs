@@ -7,7 +7,6 @@ use bevy_tweening::{Animator, EaseFunction, Tween};
 use std::collections::VecDeque;
 use std::time::Duration;
 
-use crate::ball::BallCollisionEvent;
 use crate::common::{GameState, GameStats, InGameState};
 use crate::sounds::{play_collision_sound, CollisionSound, SoundType};
 use crate::{assets::GameAssets, PEG_RADIUS};
@@ -168,7 +167,7 @@ fn peg_despawn_system(
 
 fn peg_hit_system(
     mut commands: Commands,
-    mut hit_by_ball: EventReader<BallCollisionEvent>,
+    mut collision_events: EventReader<CollisionEvent>,
     game_assets: Res<GameAssets>,
     mut pegs: Query<
         (
@@ -182,36 +181,42 @@ fn peg_hit_system(
     >,
     mut pegs_to_despawn: ResMut<PegsToDespawn>,
 ) {
-    for event in hit_by_ball.iter() {
-        if let Ok((entity, mut peg_image, mut peg_sprite, tr, mut cs)) = pegs.get_mut(event.0) {
-            if !pegs_to_despawn.set.contains(&entity) {
-                *peg_image = game_assets.peg.hit_image.clone();
-                if peg_sprite.color == Color::ORANGE {
-                    peg_sprite.color = Color::ORANGE_RED;
-                } else {
-                    peg_sprite.color = Color::rgb(0.5, 0.6, 1.0);
-                }
-                cs.sound = SoundType::None;
-                let hit_tween = Tween::new(
-                    EaseFunction::CubicIn,
-                    Duration::from_secs_f32(0.1),
-                    TransformScaleLens {
-                        start: tr.scale,
-                        end: tr.scale * 1.5,
-                    },
-                )
-                .then(Tween::new(
-                    EaseFunction::CubicOut,
-                    Duration::from_secs_f32(0.1),
-                    TransformScaleLens {
-                        end: tr.scale,
-                        start: tr.scale * 1.5,
-                    },
-                ));
-                commands.entity(entity).insert(Animator::new(hit_tween));
-                pegs_to_despawn.set.insert(entity);
-                pegs_to_despawn.queue.push_back(entity);
-            }
+    for event in collision_events.iter() {
+        let CollisionEvent::Started(e1, e2, _) = event else {continue};
+        let mut comps = pegs.get_mut(*e1);
+        if comps.is_err() {
+            comps = pegs.get_mut(*e2);
         }
+        let Ok((entity, mut peg_image, mut peg_sprite, tr, mut cs)) = comps else {continue};
+
+        if pegs_to_despawn.set.contains(&entity) {
+            continue;
+        }
+        *peg_image = game_assets.peg.hit_image.clone();
+        if peg_sprite.color == Color::ORANGE {
+            peg_sprite.color = Color::ORANGE_RED;
+        } else {
+            peg_sprite.color = Color::rgb(0.5, 0.6, 1.0);
+        }
+        cs.sound = SoundType::None;
+        let hit_tween = Tween::new(
+            EaseFunction::CubicIn,
+            Duration::from_secs_f32(0.1),
+            TransformScaleLens {
+                start: tr.scale,
+                end: tr.scale * 1.5,
+            },
+        )
+        .then(Tween::new(
+            EaseFunction::CubicOut,
+            Duration::from_secs_f32(0.1),
+            TransformScaleLens {
+                end: tr.scale,
+                start: tr.scale * 1.5,
+            },
+        ));
+        commands.entity(entity).insert(Animator::new(hit_tween));
+        pegs_to_despawn.set.insert(entity);
+        pegs_to_despawn.queue.push_back(entity);
     }
 }

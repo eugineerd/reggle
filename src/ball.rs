@@ -11,12 +11,9 @@ pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<BallCollisionEvent>().add_systems(
+        app.add_systems(
             Update,
-            (
-                ball_collision_system.run_if(in_state(InGameState::Ball)),
-                ball_despawn_system.run_if(in_state(InGameState::Ball)),
-            )
+            (ball_despawn_system.run_if(in_state(InGameState::Ball)),)
                 .chain()
                 .run_if(in_state(GameState::InGame)),
         );
@@ -26,9 +23,6 @@ impl Plugin for BallPlugin {
 #[derive(Component)]
 pub struct Ball;
 
-#[derive(Event)]
-pub struct BallCollisionEvent(pub Entity);
-
 #[derive(Bundle)]
 pub struct BallPhysicsBundle {
     pub rigid_body: RigidBody,
@@ -36,6 +30,7 @@ pub struct BallPhysicsBundle {
     pub restitution: Restitution,
     pub ccd: Ccd,
     pub transform: Transform,
+    pub acc: ActiveEvents,
 }
 
 impl BallPhysicsBundle {
@@ -49,6 +44,7 @@ impl BallPhysicsBundle {
             },
             ccd: Ccd::enabled(),
             transform: Transform::from_translation(translation),
+            acc: ActiveEvents::COLLISION_EVENTS,
         }
     }
 }
@@ -112,34 +108,4 @@ fn ball_despawn_system(mut commands: Commands, balls: Query<(Entity, &Transform)
             commands.entity(entity).despawn()
         }
     }
-}
-
-pub fn ball_collision_system(
-    mut hit_events: EventWriter<BallCollisionEvent>,
-    rapier_context: Res<RapierContext>,
-    balls: Query<Entity, With<Ball>>,
-    mut last_contact_entities: Local<HashSet<Entity>>,
-) {
-    let mut contact_entities = HashSet::new();
-    balls.for_each(|ball| {
-        for contact_pair in rapier_context.contacts_with(ball) {
-            let other_collider = if contact_pair.collider1() == ball {
-                contact_pair.collider2()
-            } else {
-                contact_pair.collider1()
-            };
-
-            contact_entities.insert(other_collider);
-            if last_contact_entities.contains(&other_collider)
-                || contact_pair
-                    .manifold(0)
-                    .map_or(true, |m| m.num_points() == 0)
-            {
-                continue;
-            }
-            last_contact_entities.insert(other_collider);
-            hit_events.send(BallCollisionEvent(other_collider));
-        }
-    });
-    last_contact_entities.retain(|e| contact_entities.contains(e));
 }

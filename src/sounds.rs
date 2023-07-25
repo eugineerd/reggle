@@ -1,10 +1,8 @@
 use bevy::prelude::*;
 use bevy_kira_audio::{Audio, AudioControl, AudioSource};
+use bevy_rapier2d::prelude::CollisionEvent;
 
-use crate::{
-    ball::{Ball, BallCollisionEvent},
-    common::GameState,
-};
+use crate::common::GameState;
 
 pub struct SoundsPlugin;
 
@@ -40,40 +38,45 @@ impl Default for CollisionSound {
     }
 }
 
+impl CollisionSound {
+    pub fn play(&self, audio: &Audio) {
+        match &self.sound {
+            SoundType::Single(h) => {
+                audio.play(h.clone());
+            }
+            SoundType::Random(hs) => {
+                if let Some(h) = fastrand::choice(hs) {
+                    audio.play(h.clone()).with_volume(self.volume);
+                }
+            }
+            SoundType::None => (),
+        };
+    }
+}
+
 pub fn play_collision_sound(
-    mut collision_events: EventReader<BallCollisionEvent>,
+    mut collision_events: EventReader<CollisionEvent>,
     ents: Query<&CollisionSound>,
-    ball: Query<&CollisionSound, With<Ball>>,
     audio: Res<Audio>,
 ) {
-    let ball_sound = ball.get_single();
     for e in collision_events.iter() {
-        let css = match (&ball_sound, ents.get(e.0)) {
+        let CollisionEvent::Started(e1, e2, _) = e else {continue};
+        let css = match (ents.get(*e1), ents.get(*e2)) {
             (Ok(cs_a), Ok(cs_b)) => {
                 if cs_a.priority == cs_b.priority {
-                    [Some(*cs_a), Some(cs_b)]
+                    [Some(cs_a), Some(cs_b)]
                 } else if cs_a.priority > cs_b.priority {
-                    [Some(*cs_a), None]
+                    [Some(cs_a), None]
                 } else {
                     [Some(cs_b), None]
                 }
             }
-            (Ok(cs), Err(_)) => [Some(*cs), None],
+            (Ok(cs), Err(_)) => [Some(cs), None],
             (Err(_), Ok(cs)) => [Some(cs), None],
             (Err(_), Err(_)) => [None, None],
         };
         for cs in css.iter().filter_map(|x| *x) {
-            match &cs.sound {
-                SoundType::Single(h) => {
-                    audio.play(h.clone());
-                }
-                SoundType::Random(hs) => {
-                    if let Some(h) = fastrand::choice(hs) {
-                        audio.play(h.clone()).with_volume(cs.volume);
-                    }
-                }
-                _ => (),
-            };
+            cs.play(&audio)
         }
     }
 }
