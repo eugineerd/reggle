@@ -80,15 +80,18 @@ fn setup_graphics(mut commands: Commands, game_assets: Res<assets::GameAssets>) 
         Camera2dBundle {
             projection: OrthographicProjection {
                 scaling_mode: bevy::render::camera::ScalingMode::FixedVertical(SCREEN_HEIGHT),
+                far: 1000.0,
+                near: -1000.0,
                 ..Default::default()
             },
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..Default::default()
         },
         MainCamera,
     ));
     commands.spawn(SpriteBundle {
         texture: game_assets.background_image.clone(),
-        transform: Transform::from_xyz(0.0, 0.0, -0.01),
+        transform: Transform::from_xyz(0.0, 0.0, -100.0),
         ..Default::default()
     });
 }

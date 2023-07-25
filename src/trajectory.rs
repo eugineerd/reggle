@@ -281,7 +281,7 @@ fn draw_trajectory_system(
             TrajectoryLine,
             ShapeBundle {
                 path: GeometryBuilder::build_as(&line),
-                transform: Transform::from_xyz(0., 0., -0.0001),
+                transform: Transform::from_xyz(0., 0., -1.0),
                 ..Default::default()
             },
             Stroke::new(Color::WHITE, 2.0),
