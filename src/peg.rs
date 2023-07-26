@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::utils::HashSet;
 use bevy_kira_audio::{Audio, AudioControl, AudioSource};
 use bevy_rapier2d::prelude::*;
 use bevy_tweening::lens::TransformScaleLens;
@@ -15,7 +14,7 @@ pub struct PegPlugin;
 
 impl Plugin for PegPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PegsToDespawn::default())
+        app.insert_resource(PegDespawnQueue::default())
             .add_systems(OnEnter(GameState::InGame), spawn_peg_system)
             .add_systems(
                 Update,
@@ -29,69 +28,45 @@ impl Plugin for PegPlugin {
     }
 }
 
-#[derive(Component)]
-pub struct Peg;
-
-#[derive(Component)]
-pub struct HitPeg;
-
-#[derive(Component)]
-pub struct TargetPeg;
-
-#[derive(Resource)]
-pub struct PegsToDespawn {
-    set: HashSet<Entity>,
-    despawn_timer: Timer,
-    queue: VecDeque<Entity>,
+#[derive(Component, Default)]
+pub struct Peg {
+    pub is_target: bool,
+    pub is_hit: bool,
 }
 
-impl Default for PegsToDespawn {
-    fn default() -> Self {
-        Self {
-            set: Default::default(),
-            despawn_timer: Timer::from_seconds(0.1, TimerMode::Repeating),
-            queue: Default::default(),
-        }
-    }
-}
+#[derive(Resource, Default)]
+pub struct PegDespawnQueue(VecDeque<Entity>);
 
 #[derive(Bundle)]
 pub struct PegBundle {
+    #[bundle()]
+    pub sprite_bundle: SpriteBundle,
+
     pub collider: Collider,
-    pub transform: Transform,
-    pub sprite: Sprite,
-    pub global_transform: GlobalTransform,
-    pub image_handle: Handle<Image>,
-    pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
     pub name: Name,
     pub collision_sound: CollisionSound,
     pub peg: Peg,
 }
 
 impl PegBundle {
-    pub fn new(
-        transform: Transform,
-        image_handle: Handle<Image>,
-        collision_sounds: &[Handle<AudioSource>],
-    ) -> Self {
+    pub fn new(transform: Transform, game_assets: &GameAssets) -> Self {
         Self {
             collider: Collider::ball(PEG_RADIUS),
-            transform,
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(PEG_RADIUS * 2.0, PEG_RADIUS * 2.0)),
+            sprite_bundle: SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(PEG_RADIUS * 2.0, PEG_RADIUS * 2.0)),
+                    ..Default::default()
+                },
+                transform: transform,
+                texture: game_assets.peg.image.clone(),
                 ..Default::default()
             },
-            global_transform: Default::default(),
-            image_handle,
-            visibility: Default::default(),
-            computed_visibility: Default::default(),
             name: Name::new("Peg"),
             collision_sound: CollisionSound {
-                sound: SoundType::Random(Vec::from(collision_sounds)),
+                sound: SoundType::Random(game_assets.peg.hit_sound.clone()),
                 ..Default::default()
             },
-            peg: Peg,
+            peg: Peg::default(),
         }
     }
 }
@@ -99,9 +74,6 @@ impl PegBundle {
 fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
     let pegs_count = 15 * 7;
     let target_pegs_count = pegs_count / 10;
-
-    let image_handle = game_assets.peg.image.clone();
-    let sounds_handle = game_assets.peg.hit_sound.clone();
 
     let mut transforms = Vec::with_capacity(pegs_count);
     for i in 0..15 {
@@ -121,15 +93,12 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
     let mut target_pegs = Vec::with_capacity(target_pegs_count);
     for (i, t) in transforms.iter().enumerate() {
         if i <= target_pegs_count {
-            let mut b = PegBundle::new(t.clone(), image_handle.clone(), &sounds_handle);
-            b.sprite.color = Color::ORANGE;
-            target_pegs.push((b, TargetPeg))
+            let mut b = PegBundle::new(t.clone(), &game_assets);
+            b.sprite_bundle.sprite.color = Color::ORANGE;
+            b.peg.is_target = true;
+            target_pegs.push(b)
         } else {
-            pegs.push(PegBundle::new(
-                t.clone(),
-                image_handle.clone(),
-                &sounds_handle,
-            ))
+            pegs.push(PegBundle::new(t.clone(), &game_assets))
         }
     }
 
@@ -144,23 +113,24 @@ fn peg_despawn_system(
     game_assets: Res<GameAssets>,
     mut game_stats: ResMut<GameStats>,
     mut peg_sprites: Query<&mut Sprite, With<Peg>>,
-    mut pegs_to_despawn: ResMut<PegsToDespawn>,
+    mut despawn_timer: Local<Option<Timer>>,
+    mut peg_despawn_queue: ResMut<PegDespawnQueue>,
 ) {
-    pegs_to_despawn.despawn_timer.tick(time.delta());
-    if let Some(peg) = pegs_to_despawn.queue.front() {
-        let inflated_size =
-            PEG_RADIUS * 2.0 + pegs_to_despawn.despawn_timer.percent() * PEG_RADIUS * 1.5;
+    let despawn_timer =
+        despawn_timer.get_or_insert_with(|| Timer::from_seconds(0.1, TimerMode::Repeating));
+    despawn_timer.tick(time.delta());
+    if let Some(peg) = peg_despawn_queue.0.front() {
+        let inflated_size = PEG_RADIUS * 2.0 + despawn_timer.percent() * PEG_RADIUS * 1.5;
         peg_sprites.get_mut(*peg).unwrap().custom_size = Some(Vec2::splat(inflated_size));
-        if pegs_to_despawn.despawn_timer.just_finished() {
+        if despawn_timer.just_finished() {
             audio.play(game_assets.peg.pop_sound.clone());
             game_stats.player_score += 1;
             commands.entity(*peg).despawn();
-            pegs_to_despawn.queue.pop_front();
+            peg_despawn_queue.0.pop_front();
         }
     } else {
-        pegs_to_despawn.despawn_timer.reset();
-        pegs_to_despawn.queue.clear();
-        pegs_to_despawn.set.clear();
+        despawn_timer.reset();
+        peg_despawn_queue.0.clear();
         commands.insert_resource(NextState(Some(InGameState::Launcher)));
     }
 }
@@ -169,17 +139,15 @@ fn peg_hit_system(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
     game_assets: Res<GameAssets>,
-    mut pegs: Query<
-        (
-            Entity,
-            &mut Handle<Image>,
-            &mut Sprite,
-            &Transform,
-            &mut CollisionSound,
-        ),
-        With<Peg>,
-    >,
-    mut pegs_to_despawn: ResMut<PegsToDespawn>,
+    mut pegs: Query<(
+        Entity,
+        &mut Handle<Image>,
+        &mut Sprite,
+        &Transform,
+        &mut CollisionSound,
+        &mut Peg,
+    )>,
+    mut peg_despawn_queue: ResMut<PegDespawnQueue>,
 ) {
     for event in collision_events.iter() {
         let CollisionEvent::Started(e1, e2, _) = event else {continue};
@@ -187,11 +155,13 @@ fn peg_hit_system(
         if comps.is_err() {
             comps = pegs.get_mut(*e2);
         }
-        let Ok((entity, mut peg_image, mut peg_sprite, tr, mut cs)) = comps else {continue};
+        let Ok((entity, mut peg_image, mut peg_sprite, tr, mut cs, mut peg)) = comps else {continue};
 
-        if pegs_to_despawn.set.contains(&entity) {
+        if peg.is_hit {
             continue;
         }
+
+        peg.is_hit = true;
         *peg_image = game_assets.peg.hit_image.clone();
         if peg_sprite.color == Color::ORANGE {
             peg_sprite.color = Color::ORANGE_RED;
@@ -216,7 +186,6 @@ fn peg_hit_system(
             },
         ));
         commands.entity(entity).insert(Animator::new(hit_tween));
-        pegs_to_despawn.set.insert(entity);
-        pegs_to_despawn.queue.push_back(entity);
+        peg_despawn_queue.0.push_back(entity);
     }
 }

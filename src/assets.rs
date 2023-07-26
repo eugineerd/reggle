@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bevy::{asset::LoadState, prelude::*};
 use bevy_kira_audio::AudioSource;
 
@@ -18,7 +20,7 @@ impl Plugin for AssetsPlugin {
 
 #[derive(Default)]
 pub struct PegAssets {
-    pub hit_sound: Vec<Handle<AudioSource>>,
+    pub hit_sound: Arc<Vec<Handle<AudioSource>>>,
     pub image: Handle<Image>,
     pub hit_image: Handle<Image>,
     pub pop_sound: Handle<AudioSource>,
@@ -26,7 +28,7 @@ pub struct PegAssets {
 
 #[derive(Default)]
 pub struct BallAssets {
-    pub hit_sound: Vec<Handle<AudioSource>>,
+    pub hit_sound: Arc<Vec<Handle<AudioSource>>>,
     pub image: Handle<Image>,
 }
 
@@ -45,24 +47,34 @@ pub struct GameAssets {
 }
 
 fn load_assets(asset_server: Res<AssetServer>, mut assets: ResMut<GameAssets>) {
-    assets.peg.hit_sound = vec![
-        asset_server.load("sfx/peg/impactGlass_medium_000.ogg"),
-        asset_server.load("sfx/peg/impactGlass_medium_001.ogg"),
-        asset_server.load("sfx/peg/impactGlass_medium_002.ogg"),
-        asset_server.load("sfx/peg/impactGlass_medium_003.ogg"),
-        asset_server.load("sfx/peg/impactGlass_medium_004.ogg"),
-    ];
+    assets.peg.hit_sound = Arc::new(
+        vec![
+            "sfx/peg/impactGlass_medium_000.ogg",
+            "sfx/peg/impactGlass_medium_001.ogg",
+            "sfx/peg/impactGlass_medium_002.ogg",
+            "sfx/peg/impactGlass_medium_003.ogg",
+            "sfx/peg/impactGlass_medium_004.ogg",
+        ]
+        .into_iter()
+        .map(|s| asset_server.load(s))
+        .collect(),
+    );
     assets.peg.pop_sound = asset_server.load("sfx/pop.ogg");
 
     assets.peg.image = asset_server.load("sprites/peg/normal.png");
     assets.peg.hit_image = asset_server.load("sprites/peg/hit.png");
 
-    assets.ball.hit_sound = vec![
-        asset_server.load("sfx/ball/impactSoft_heavy_001.ogg"),
-        asset_server.load("sfx/ball/impactSoft_heavy_002.ogg"),
-        asset_server.load("sfx/ball/impactSoft_heavy_003.ogg"),
-        asset_server.load("sfx/ball/impactSoft_heavy_004.ogg"),
-    ];
+    assets.ball.hit_sound = Arc::new(
+        vec![
+            "sfx/ball/impactSoft_heavy_001.ogg",
+            "sfx/ball/impactSoft_heavy_002.ogg",
+            "sfx/ball/impactSoft_heavy_003.ogg",
+            "sfx/ball/impactSoft_heavy_004.ogg",
+        ]
+        .into_iter()
+        .map(|s| asset_server.load(s))
+        .collect(),
+    );
 
     assets.ball.image = asset_server.load("sprites/ball.png");
     assets.launcher.image = asset_server.load("sprites/launcher.png");

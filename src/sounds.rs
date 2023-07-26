@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bevy::prelude::*;
 use bevy_kira_audio::{Audio, AudioControl, AudioSource};
 use bevy_rapier2d::prelude::CollisionEvent;
@@ -14,11 +16,12 @@ impl Plugin for SoundsPlugin {
         );
     }
 }
-
+#[derive(Default)]
 pub enum SoundType {
+    #[default]
     None,
     Single(Handle<AudioSource>),
-    Random(Vec<Handle<AudioSource>>),
+    Random(Arc<Vec<Handle<AudioSource>>>),
 }
 
 #[derive(Component)]
@@ -45,7 +48,7 @@ impl CollisionSound {
                 audio.play(h.clone());
             }
             SoundType::Random(hs) => {
-                if let Some(h) = fastrand::choice(hs) {
+                if let Some(h) = fastrand::choice(hs.as_ref()) {
                     audio.play(h.clone()).with_volume(self.volume);
                 }
             }
