@@ -16,7 +16,7 @@ impl Plugin for SoundsPlugin {
         );
     }
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub enum SoundType {
     #[default]
     None,
@@ -24,7 +24,7 @@ pub enum SoundType {
     Random(Arc<Vec<Handle<AudioSource>>>),
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct CollisionSound {
     pub sound: SoundType,
     pub volume: f64,
