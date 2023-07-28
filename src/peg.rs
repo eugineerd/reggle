@@ -14,7 +14,8 @@ pub struct PegPlugin;
 
 impl Plugin for PegPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PegDespawnQueue::default())
+        app.add_event::<PegDespawnEvent>()
+            .insert_resource(PegDespawnQueue::default())
             .add_systems(OnEnter(GameState::InGame), spawn_peg_system)
             .add_systems(
                 Update,
@@ -23,12 +24,16 @@ impl Plugin for PegPlugin {
                     peg_hit_system
                         .run_if(in_state(InGameState::Ball))
                         .after(play_collision_sound),
-                    peg_despawn_system.run_if(in_state(InGameState::Cleanup)),
+                    peg_cleanup.run_if(in_state(InGameState::Cleanup)),
+                    peg_despawn.after(peg_cleanup),
                 )
                     .run_if(in_state(GameState::InGame)),
             );
     }
 }
+
+#[derive(Event)]
+pub struct PegDespawnEvent(pub Entity);
 
 #[derive(Default, Bundle, Clone)]
 pub struct PegPreset {
@@ -186,12 +191,10 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
     commands.spawn_batch(pegs.into_iter());
 }
 
-fn peg_despawn_system(
+fn peg_cleanup(
     mut commands: Commands,
     time: Res<Time>,
-    audio: Res<Audio>,
-    game_assets: Res<GameAssets>,
-    mut game_stats: ResMut<GameStats>,
+    mut despawn_events: EventWriter<PegDespawnEvent>,
     mut peg_sprites: Query<&mut Sprite, With<Peg>>,
     mut despawn_timer: Local<Option<Timer>>,
     mut peg_despawn_queue: ResMut<PegDespawnQueue>,
@@ -199,21 +202,45 @@ fn peg_despawn_system(
     let despawn_timer =
         despawn_timer.get_or_insert_with(|| Timer::from_seconds(0.1, TimerMode::Repeating));
     despawn_timer.tick(time.delta());
-    if let Some(peg) = peg_despawn_queue.0.front() {
-        let inflated_size = PEG_RADIUS * 2.0 + despawn_timer.percent() * PEG_RADIUS * 1.5;
-        if let Ok(mut s) = peg_sprites.get_mut(*peg) {
-            s.custom_size = Some(Vec2::splat(inflated_size));
+    loop {
+        if let Some(peg) = peg_despawn_queue.0.front() {
+            let inflated_size = PEG_RADIUS * 2.0 + despawn_timer.percent() * PEG_RADIUS * 1.5;
+            if let Ok(mut s) = peg_sprites.get_mut(*peg) {
+                s.custom_size = Some(Vec2::splat(inflated_size));
+            } else {
+                // Skips already depspawned entities
+                peg_despawn_queue.0.pop_front();
+                continue;
+            }
+            if despawn_timer.just_finished() {
+                despawn_events.send(PegDespawnEvent(*peg));
+                peg_despawn_queue.0.pop_front();
+            }
+        } else {
+            despawn_timer.reset();
+            peg_despawn_queue.0.clear();
+            commands.insert_resource(NextState(Some(InGameState::Launcher)));
         }
-        if despawn_timer.just_finished() {
-            audio.play(game_assets.peg.pop_sound.clone());
-            game_stats.player_score += 1;
-            commands.entity(*peg).despawn();
-            peg_despawn_queue.0.pop_front();
+        break;
+    }
+}
+
+fn peg_despawn(
+    mut commands: Commands,
+    mut despawn_events: EventReader<PegDespawnEvent>,
+    mut game_stats: ResMut<GameStats>,
+    pegs: Query<Entity, With<Peg>>,
+    game_assets: Res<GameAssets>,
+    audio: Res<Audio>,
+) {
+    for PegDespawnEvent(entity) in despawn_events.iter() {
+        if !pegs.contains(*entity) {
+            continue;
         }
-    } else {
-        despawn_timer.reset();
-        peg_despawn_queue.0.clear();
-        commands.insert_resource(NextState(Some(InGameState::Launcher)));
+        let Some(mut entity_commands) = commands.get_entity(*entity) else {continue};
+        audio.play(game_assets.peg.pop_sound.clone());
+        game_stats.player_score += 1;
+        entity_commands.despawn();
     }
 }
 
