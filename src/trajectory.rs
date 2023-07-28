@@ -222,8 +222,8 @@ pub fn init_trajectory_world(mut commands: Commands, rapier_config: Res<RapierCo
 
 pub fn sync_colliders_system(
     mut trajectory_world: ResMut<TrajectoryWorld>,
-    added_colliders: Query<(Entity, &Transform, &Collider), (Added<Collider>, Without<RigidBody>)>,
-    changed_colliders: Query<(Entity, &Collider), (Changed<Collider>, Without<RigidBody>)>,
+    added_colliders: Query<(Entity, &Transform, &Collider), Added<Collider>>,
+    changed_colliders: Query<(Entity, &Collider), Changed<Collider>>,
     moved_colliders: Query<
         (Entity, &Transform),
         (Changed<Transform>, With<Collider>, Without<RigidBody>),

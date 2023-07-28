@@ -69,6 +69,7 @@ pub struct PegBundle {
     pub name: Name,
     pub collision_sound: CollisionSound,
     pub peg: Peg,
+    pub body: RigidBody,
 }
 
 impl Default for PegBundle {
@@ -85,6 +86,7 @@ impl Default for PegBundle {
             name: Name::new("Peg"),
             collision_sound: Default::default(),
             peg: Peg::default(),
+            body: RigidBody::Fixed,
         }
     }
 }
@@ -171,6 +173,7 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
                     transform: tr,
                     ..Default::default()
                 },
+                body: RigidBody::Fixed,
                 ..Default::default()
             })
         }
