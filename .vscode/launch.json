@@ -19,6 +19,9 @@
                     "kind": "bin"
                 }
             },
+            "env": {
+                "BEVY_ASSET_ROOT": "${workspaceFolder}"
+            },
             "args": [],
             "cwd": "${workspaceFolder}"
         },

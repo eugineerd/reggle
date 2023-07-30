@@ -89,7 +89,6 @@ fn check_load_status(
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     let s = asset_server.get_load_state(&assets.background_image);
-    info!("{:?}", s);
     match s {
         LoadState::Loaded => next_state.set(state.next()),
         LoadState::Failed => panic!("Failed to load"),
