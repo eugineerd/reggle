@@ -21,6 +21,7 @@ mod common;
 mod debug;
 mod input;
 mod launcher;
+mod path;
 mod peg;
 mod sounds;
 mod trajectory;
@@ -54,8 +55,9 @@ fn main() {
             peg::PegPlugin,
             debug::DebugPlugin,
             launcher::LauncherPlugin,
-            trajectory::TrajectoryPlugin,
+            // trajectory::TrajectoryPlugin,
             ui::UiPlugin,
+            path::PathPlugin,
             sounds::SoundsPlugin,
         ))
         .add_systems(OnEnter(GameState::InGame), (setup_graphics, setup_level));
