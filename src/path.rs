@@ -1,16 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{common::GameState, input::GameInput};
-
-// TODO:
-// - [ ] Efficient distance from point to spline
-// - [-] Use bevy::math splines
-// - [x] Efficeint draw splines
-// - [ ] Add movement easing using bevy::math spline
-
-const SEGMENTS_MAX_ITER_NUM: usize = 10;
-const SEGMENTS_ANGLE_TOL: f32 = 0.4;
-const SEGMENTS_MAX_STEP: f32 = 0.1;
+use crate::{common::GameState, peg::Peg, spline::Spline};
 
 pub struct PathPlugin;
 
@@ -18,186 +8,182 @@ impl Plugin for PathPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (cache_path_segments, draw_path).run_if(in_state(GameState::InGame)),
+            (tessellate_path_segments, (draw_path, move_path_agents))
+                .chain()
+                .run_if(in_state(GameState::InGame)),
         )
-        .add_systems(Startup, path_test)
+        .add_systems(Update, path_test)
         .register_type::<Path>()
-        .register_type::<PathPoint>()
-        .register_type::<PathType>();
+        .register_type::<PathAgent>();
     }
 }
 
-fn path_test(mut commands: Commands) {
-    commands.spawn((
-        Path {
-            points: vec![
-                PathPoint {
-                    pos: Vec2::new(-100.0, 400.0),
+fn path_test(mut commands: Commands, pegs: Query<Entity, Added<Peg>>) {
+    for peg in pegs.iter() {
+        let path_id = commands
+            .spawn((
+                Path {
+                    points: vec![
+                        PathPoint {
+                            pos: Vec2::new(-100.0, 400.0),
+                            ..Default::default()
+                        },
+                        PathPoint {
+                            pos: Vec2::new(100.0, -200.0),
+                            ..Default::default()
+                        },
+                        PathPoint {
+                            pos: Vec2::new(200.0, 0.0),
+                            ..Default::default()
+                        },
+                        PathPoint {
+                            pos: Vec2::new(300.0, 0.0),
+                            ..Default::default()
+                        },
+                    ],
+                    move_speed: 100.0,
+                    looped: true,
                     ..Default::default()
                 },
-                PathPoint {
-                    pos: Vec2::new(100.0, -200.0),
-                    ..Default::default()
-                },
-                PathPoint {
-                    pos: Vec2::new(200.0, 0.0),
-                    ..Default::default()
-                },
-                PathPoint {
-                    pos: Vec2::new(300.0, 0.0),
-                    ..Default::default()
-                },
-            ],
-            ..Default::default()
-        },
-        Name::new("Path"),
-    ));
-}
-
-#[derive(Reflect)]
-pub enum PathType {
-    Linear,
-    CatmullRom(f32),
-}
-
-impl Default for PathType {
-    fn default() -> Self {
-        return PathType::CatmullRom(0.5);
+                Name::new("Path"),
+            ))
+            .id();
+        commands.entity(peg).insert(PathAgent {
+            path: path_id,
+            t: 0.0,
+        });
+        return;
     }
 }
 
-#[derive(Default, Reflect)]
+#[derive(Reflect, Default)]
 pub struct PathPoint {
-    pos: Vec2,
-    move_speed_mul: f32,
-    move_ease_method: (),
-    path_type: PathType,
+    pub pos: Vec2,
+    pub spline: Spline,
+    pub speed_multiplier: f32,
+    pub easing_function: (),
 }
 
 #[derive(Component, Default, Reflect)]
 pub struct Path {
-    points: Vec<PathPoint>,
-    looped: bool,
+    pub points: Vec<PathPoint>,
+    pub move_speed: f32,
+    pub looped: bool,
 }
 
-#[derive(Component, Default)]
-struct PathSegmentCache {
-    segments: Vec<Vec<Vec2>>,
+impl Path {
+    pub fn get_world_pos(&self, t: f32) -> Vec2 {
+        let point_idx = (t.floor() as usize).clamp(0, self.points.len() - 1);
+        let point = &self.points[point_idx];
+
+        let Some(neigbors) = self.get_neigbors_positions(point_idx) else {return point.pos};
+        point.spline.get_pos(t - point_idx as f32, &neigbors)
+    }
+
+    pub fn tessellate_segments(&mut self) {
+        for i in 0..self.points.len() {
+            let neighbors = self.get_neigbors_positions(i);
+            self.points[i].spline.tessellate_segment(neighbors.as_ref());
+        }
+    }
+
+    fn get_neigbors_positions(&self, point_idx: usize) -> Option<[Vec2; 4]> {
+        if !self.looped && point_idx >= self.points.len() - 1 {
+            return None;
+        }
+        let p1 = self.points[point_idx].pos;
+        let p2 = self.points[(point_idx + 1) % self.points.len()].pos;
+        let (p0, p3) = if self.looped {
+            (
+                self.points[point_idx
+                    .checked_add_signed(-1)
+                    .unwrap_or(self.points.len() - 1)]
+                .pos,
+                self.points[(point_idx + 2) % self.points.len()].pos,
+            )
+        } else {
+            let dir = (p2 - p1).normalize_or_zero();
+            let p0 = if point_idx > 0 {
+                self.points[point_idx - 1].pos
+            } else {
+                p1 - dir
+            };
+            let p3 = if point_idx < self.points.len() - 2 {
+                self.points[point_idx + 2].pos
+            } else {
+                p2 + dir
+            };
+            (p0, p3)
+        };
+        Some([p0, p1, p2, p3])
+    }
 }
 
-#[derive(Component)]
+impl Path {
+    pub fn move_agent_along_path(&self, mut t: f32, time_delta: f32) -> f32 {
+        let mut point_idx = (t.floor() as usize).clamp(0, self.points.len() - 1);
+        t = t.fract();
+
+        let mut agent_distance = self.move_speed * time_delta;
+        loop {
+            let segment = &self.points[point_idx].spline.segment;
+            let seg_distance = (1.0 - t) * segment.len();
+            if seg_distance > agent_distance {
+                t += agent_distance / segment.len();
+                break;
+            }
+            agent_distance -= seg_distance;
+            t = 0.0;
+            point_idx += 1;
+            if point_idx >= self.points.len() {
+                if self.looped {
+                    point_idx = 0
+                } else {
+                    break;
+                }
+            }
+        }
+        t + point_idx as f32
+    }
+}
+
+#[derive(Component, Reflect)]
 pub struct PathAgent {
     pub path: Entity,
     pub t: f32,
-    pub point_idx: usize,
 }
 
-/// Implementation of centripetal Catmull–Rom spline.
-/// See: https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline#Definition
-fn catmull_rom_spline(
-    p0: Vec2,
-    p1: Vec2,
-    p2: Vec2,
-    p3: Vec2,
-    mut alpha: f32,
-    mut t: f32,
-    compute_derivative: bool,
-) -> (Vec2, Vec2) {
-    t = t.clamp(0.0, 1.0);
-    alpha = alpha.clamp(0.0, 1.0);
-
-    let t0 = 0.0;
-    let t1 = (p1 - p0).length_squared().powf(alpha * 0.5) + t0;
-    let t2 = (p2 - p1).length_squared().powf(alpha * 0.5) + t1;
-    let t3 = (p3 - p2).length_squared().powf(alpha * 0.5) + t2;
-
-    t = t1 * t + (1.0 - t) * t2;
-
-    let a1 = (t1 - t) / (t1 - t0) * p0 + (t - t0) / (t1 - t0) * p1;
-    let a2 = (t2 - t) / (t2 - t1) * p1 + (t - t1) / (t2 - t1) * p2;
-    let a3 = (t3 - t) / (t3 - t2) * p2 + (t - t2) / (t3 - t2) * p3;
-
-    let b1 = (t2 - t) / (t2 - t0) * a1 + (t - t0) / (t2 - t0) * a2;
-    let b2 = (t3 - t) / (t3 - t1) * a2 + (t - t1) / (t3 - t1) * a3;
-
-    let c = (t2 - t) / (t2 - t1) * b1 + (t - t1) / (t2 - t1) * b2;
-
-    let mut dc = Vec2::ZERO;
-    if compute_derivative {
-        let da1 = 1.0 / (t1 - t0) * (p1 - p0);
-        let da2 = 1.0 / (t2 - t1) * (p2 - p1);
-        let da3 = 1.0 / (t3 - t2) * (p3 - p2);
-
-        let db1 =
-            1.0 / (t2 - t0) * (a2 - a1) + (t2 - t) / (t2 - t0) * da1 + (t - t0) / (t2 - t0) * da2;
-        let db2 =
-            1.0 / (t3 - t1) * (a3 - a2) + (t3 - t) / (t3 - t1) * da2 + (t - t1) / (t3 - t1) * da3;
-
-        dc = 1.0 / (t2 - t1) * (b2 - b1) + (t2 - t) / (t2 - t1) * db1 + (t - t1) / (t2 - t1) * db2
-    }
-
-    (c, dc)
-}
-
-fn draw_path(paths: Query<(&Path, &PathSegmentCache)>, mut gizmos: Gizmos, inp: Res<GameInput>) {
-    let Ok((path, seg_cache)) = paths.get_single() else {return};
-
-    for point in &path.points {
-        gizmos.circle_2d(point.pos, 5.0, Color::RED);
-    }
-
-    for seg in &seg_cache.segments {
-        for (p1, p2) in seg[..seg.len()].iter().zip(&seg[1..]) {
-            gizmos.line_2d(*p1, *p2, Color::WHITE);
-        }
-    }
-}
-
-fn cache_path_segments(
-    mut commands: Commands,
-    paths: Query<(Entity, &Path), Or<(Added<Path>, Changed<Path>)>>,
+fn move_path_agents(
+    paths: Query<&Path>,
+    mut agents: Query<(&mut PathAgent, &mut Transform)>,
+    time: Res<Time>,
 ) {
-    for (e, path) in paths.iter() {
-        let points_num = path.points.len();
-        let mut cache = PathSegmentCache::default();
+    for (mut agent, mut tr) in agents.iter_mut() {
+        let Ok(path) = paths.get(agent.path) else {continue};
 
-        for i in 0..points_num - (!path.looped as usize) {
-            let p1 = &path.points[i];
-            let p2 = &path.points[(i + 1) % points_num];
-            let mut segment = Vec::new();
-            match p1.path_type {
-                PathType::CatmullRom(alpha) => {
-                    let p0 = &path.points[i.checked_add_signed(-1).unwrap_or(points_num - 1)];
-                    let p3 = &path.points[(i + 2) % points_num];
-                    let segment_spline =
-                        |t| catmull_rom_spline(p0.pos, p1.pos, p2.pos, p3.pos, alpha, t, true);
-                    let mut t_last = 0.0f32;
-                    let (mut x_last, mut dt_last) = segment_spline(t_last);
-                    segment.push(x_last);
-                    while t_last < 1.0 {
-                        let mut t = (t_last + SEGMENTS_MAX_STEP).min(1.0);
-                        let (mut x, mut dt) = segment_spline(t);
-                        let mut iter_num = 0;
-                        while dt_last.angle_between(dt).abs() > SEGMENTS_ANGLE_TOL
-                            && iter_num < SEGMENTS_MAX_ITER_NUM
-                        {
-                            iter_num += 1;
-                            t = (t_last + t) / 2.0;
-                            (x, dt) = segment_spline(t);
-                        }
-                        (t_last, x_last, dt_last) = (t, x, dt);
-                        segment.push(x_last);
-                    }
-                }
-                PathType::Linear => {
-                    segment.push(p1.pos);
-                    segment.push(p2.pos);
-                }
+        agent.t = path.move_agent_along_path(agent.t, time.delta_seconds());
+        tr.translation = path.get_world_pos(agent.t).extend(tr.translation.z)
+    }
+}
+
+fn draw_path(paths: Query<&Path>, mut gizmos: Gizmos) {
+    for path in paths.iter() {
+        for point in &path.points {
+            gizmos.circle_2d(point.pos, 5.0, Color::RED);
+            let segment = &point.spline.segment;
+            if segment.len() == 0.0 {
+                continue;
             }
-            cache.segments.push(segment);
+            let seg_points = segment.points();
+            for (p1, p2) in seg_points[..seg_points.len()].iter().zip(&seg_points[1..]) {
+                gizmos.line_2d(*p1, *p2, Color::WHITE);
+            }
         }
-        if let Some(mut c) = commands.get_entity(e) {
-            c.insert(cache);
-        }
+    }
+}
+
+fn tessellate_path_segments(mut paths: Query<&mut Path, Changed<Path>>) {
+    for mut path in paths.iter_mut() {
+        path.tessellate_segments();
     }
 }

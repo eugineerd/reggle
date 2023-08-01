@@ -24,6 +24,7 @@ mod launcher;
 mod path;
 mod peg;
 mod sounds;
+mod spline;
 mod trajectory;
 mod ui;
 
