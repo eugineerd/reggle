@@ -57,11 +57,18 @@ fn path_test(mut commands: Commands, pegs: Query<Entity, Added<Peg>>) {
 }
 
 #[derive(Reflect, Default)]
+pub enum PathEasingFunction {
+    None,
+    #[default]
+    Constant,
+}
+
+#[derive(Reflect, Default)]
 pub struct PathPoint {
     pub pos: Vec2,
     pub spline: Spline,
     pub speed_multiplier: f32,
-    pub easing_function: (),
+    pub easing_function: PathEasingFunction,
 }
 
 #[derive(Component, Default, Reflect)]
@@ -76,8 +83,15 @@ impl Path {
         let point_idx = (t.floor() as usize).clamp(0, self.points.len() - 1);
         let point = &self.points[point_idx];
 
-        let Some(neigbors) = self.get_neigbors_positions(point_idx) else {return point.pos};
-        point.spline.get_pos(t - point_idx as f32, &neigbors)
+        if let PathEasingFunction::Constant = point.easing_function {
+            point
+                .spline
+                .get_pos_cached(t - point_idx as f32)
+                .unwrap_or(self.points[point_idx].pos)
+        } else {
+            let Some(neigbors) = self.get_neigbors_positions(point_idx) else {return point.pos};
+            point.spline.get_pos(t - point_idx as f32, &neigbors)
+        }
     }
 
     pub fn tessellate_segments(&mut self) {
@@ -117,9 +131,7 @@ impl Path {
         };
         Some([p0, p1, p2, p3])
     }
-}
 
-impl Path {
     pub fn move_agent_along_path(&self, mut t: f32, time_delta: f32) -> f32 {
         let mut point_idx = (t.floor() as usize).clamp(0, self.points.len() - 1);
         t = t.fract();

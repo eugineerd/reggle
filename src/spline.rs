@@ -23,6 +23,8 @@ pub struct Segment {
     len: f32,
     #[reflect(ignore)]
     points: Vec<Vec2>,
+    #[reflect(ignore)]
+    distnaces: Vec<f32>,
 }
 
 impl Segment {
@@ -65,6 +67,40 @@ impl Spline {
         }
     }
 
+    pub fn get_pos_cached(&self, mut t: f32) -> Option<Vec2> {
+        t = t.clamp(0.0, 1.0);
+        let points = self.segment.points();
+        let distances = &self.segment.distnaces;
+        if points.len() == 0 {
+            return None;
+        }
+
+        let target_distnace = self.segment.len() * t;
+        let mut start = 0;
+        let mut end = distances.len();
+        let mut idx = (start + end) / 2;
+        while start < idx {
+            if target_distnace <= distances[idx] {
+                end = idx;
+            } else {
+                start = idx;
+            }
+            idx = (start + end) / 2;
+        }
+        if idx == 0 || idx == points.len() - 1 {
+            return Some(points[idx]);
+        }
+
+        let line_vec = points[idx + 1] - points[idx];
+        let line_length = line_vec.length();
+        let frac = if line_length < f32::EPSILON {
+            0.5
+        } else {
+            (target_distnace - distances[idx]) / line_length
+        };
+        Some(points[idx] + line_vec * frac)
+    }
+
     pub fn get_pos_and_vel(&self, mut t: f32, neighbors: &[Vec2; 4]) -> (Vec2, Vec2) {
         t = t.clamp(0.0, 1.0);
         match self.segment.typ {
@@ -87,6 +123,7 @@ impl Spline {
 
     pub fn tessellate_segment(&mut self, neighbors: Option<&[Vec2; 4]>) {
         self.segment.points.clear();
+        self.segment.distnaces.clear();
         self.segment.len = 0.0;
         let Some(neighbors) = neighbors else {return};
         if let SegmentType::Linear = self.segment.typ {
@@ -109,7 +146,8 @@ impl Spline {
                 t = (t_last + t) / 2.0;
                 (x, dt) = self.get_pos_and_vel(t, neighbors);
             }
-            self.segment.len += (x_last - x).length().abs();
+            self.segment.distnaces.push(self.segment.len);
+            self.segment.len += (x - x_last).length();
             self.segment.points.push(x);
             (t_last, x_last, dt_last) = (t, x, dt);
         }
