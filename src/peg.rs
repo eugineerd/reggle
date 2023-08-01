@@ -7,6 +7,7 @@ use std::collections::VecDeque;
 use std::time::Duration;
 
 use crate::common::{GameState, GameStats, InGameState};
+use crate::path::{Path, PathAgent, PathBundle, PathPoint};
 use crate::sounds::{play_collision_sound, CollisionSound, SoundType};
 use crate::{assets::GameAssets, PEG_RADIUS};
 
@@ -192,6 +193,54 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
     }
 
     commands.spawn_batch(pegs.into_iter());
+
+    commands
+        .spawn(PathBundle {
+            path: Path {
+                points: vec![
+                    PathPoint {
+                        pos: Vec2::new(-300.0, 300.0),
+                        ..Default::default()
+                    },
+                    PathPoint {
+                        pos: Vec2::new(300.0, 300.0),
+                        ..Default::default()
+                    },
+                    PathPoint {
+                        pos: Vec2::new(300.0, -300.0),
+                        ..Default::default()
+                    },
+                    PathPoint {
+                        pos: Vec2::new(-300.0, -300.0),
+                        ..Default::default()
+                    },
+                ],
+                looped: true,
+                move_speed: 100.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|cb| {
+            for i in 0..20 {
+                cb.spawn((
+                    PegBundle {
+                        peg: Peg {
+                            presets: rect_peg_presets.clone(),
+                            ..Default::default()
+                        },
+                        sprite_bundle: SpriteBundle {
+                            ..Default::default()
+                        },
+                        body: RigidBody::KinematicPositionBased,
+                        ..Default::default()
+                    },
+                    PathAgent {
+                        t: 4.0 * i as f32 / 20.0,
+                    },
+                ));
+            }
+        });
 }
 
 fn peg_cleanup(

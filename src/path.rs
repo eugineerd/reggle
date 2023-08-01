@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{common::GameState, peg::Peg, spline::Spline};
+use crate::{common::GameState, spline::Spline};
 
 pub struct PathPlugin;
 
@@ -12,48 +12,18 @@ impl Plugin for PathPlugin {
                 .chain()
                 .run_if(in_state(GameState::InGame)),
         )
-        .add_systems(Update, path_test)
         .register_type::<Path>()
         .register_type::<PathAgent>();
     }
 }
 
-fn path_test(mut commands: Commands, pegs: Query<Entity, Added<Peg>>) {
-    for peg in pegs.iter() {
-        let path_id = commands
-            .spawn((
-                Path {
-                    points: vec![
-                        PathPoint {
-                            pos: Vec2::new(-100.0, 400.0),
-                            ..Default::default()
-                        },
-                        PathPoint {
-                            pos: Vec2::new(100.0, -200.0),
-                            ..Default::default()
-                        },
-                        PathPoint {
-                            pos: Vec2::new(200.0, 0.0),
-                            ..Default::default()
-                        },
-                        PathPoint {
-                            pos: Vec2::new(300.0, 0.0),
-                            ..Default::default()
-                        },
-                    ],
-                    move_speed: 100.0,
-                    looped: true,
-                    ..Default::default()
-                },
-                Name::new("Path"),
-            ))
-            .id();
-        commands.entity(peg).insert(PathAgent {
-            path: path_id,
-            t: 0.0,
-        });
-        return;
-    }
+#[derive(Bundle, Default)]
+pub struct PathBundle {
+    pub path: Path,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
+    pub local_tranform: Transform,
+    pub global_transform: GlobalTransform,
 }
 
 #[derive(Reflect, Default)]
@@ -164,34 +134,37 @@ impl Path {
 
 #[derive(Component, Reflect)]
 pub struct PathAgent {
-    pub path: Entity,
     pub t: f32,
 }
 
 fn move_path_agents(
     paths: Query<&Path>,
-    mut agents: Query<(&mut PathAgent, &mut Transform)>,
+    mut agents: Query<(&mut PathAgent, &mut Transform, &Parent)>,
     time: Res<Time>,
 ) {
-    for (mut agent, mut tr) in agents.iter_mut() {
-        let Ok(path) = paths.get(agent.path) else {continue};
+    for (mut agent, mut tr, path) in agents.iter_mut() {
+        let Ok(path) = paths.get(path.get()) else {continue};
 
         agent.t = path.move_agent_along_path(agent.t, time.delta_seconds());
         tr.translation = path.get_world_pos(agent.t).extend(tr.translation.z)
     }
 }
 
-fn draw_path(paths: Query<&Path>, mut gizmos: Gizmos) {
-    for path in paths.iter() {
+fn draw_path(paths: Query<(&Path, &Transform, &ComputedVisibility)>, mut gizmos: Gizmos) {
+    for (path, tr, cv) in paths.iter() {
+        if !cv.is_visible() {
+            continue;
+        }
+        let path_pos = tr.translation.truncate();
         for point in &path.points {
-            gizmos.circle_2d(point.pos, 5.0, Color::RED);
+            gizmos.circle_2d(point.pos + path_pos, 5.0, Color::RED);
             let segment = &point.spline.segment;
             if segment.len() == 0.0 {
                 continue;
             }
             let seg_points = segment.points();
             for (p1, p2) in seg_points[..seg_points.len()].iter().zip(&seg_points[1..]) {
-                gizmos.line_2d(*p1, *p2, Color::WHITE);
+                gizmos.line_2d(*p1 + path_pos, *p2 + path_pos, Color::WHITE);
             }
         }
     }

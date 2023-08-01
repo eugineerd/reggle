@@ -74,6 +74,9 @@ impl Spline {
         if points.len() == 0 {
             return None;
         }
+        if points.len() == 2 {
+            return Some(points[0] + (points[1] - points[0]) * t);
+        }
 
         let target_distnace = self.segment.len() * t;
         let mut start = 0;
@@ -87,7 +90,7 @@ impl Spline {
             }
             idx = (start + end) / 2;
         }
-        if idx == 0 || idx == points.len() - 1 {
+        if idx == points.len() - 1 {
             return Some(points[idx]);
         }
 
@@ -130,6 +133,7 @@ impl Spline {
             self.segment.points.push(neighbors[1]);
             self.segment.points.push(neighbors[2]);
             self.segment.len = (neighbors[2] - neighbors[1]).length();
+            self.segment.distnaces.push(self.segment.len);
             return;
         }
         let mut t_last = 0.0f32;
