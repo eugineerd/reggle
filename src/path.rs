@@ -128,6 +128,9 @@ impl Path {
         loop {
             let segment = &self.points[point_idx].spline.segment;
             let seg_distance = (1.0 - t) * segment.len();
+            if seg_distance < f32::EPSILON || seg_distance.is_nan() {
+                break;
+            }
             if seg_distance > agent_distance {
                 t += agent_distance / segment.len();
                 break;
