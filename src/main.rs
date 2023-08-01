@@ -56,7 +56,7 @@ fn main() {
             peg::PegPlugin,
             debug::DebugPlugin,
             launcher::LauncherPlugin,
-            // trajectory::TrajectoryPlugin,
+            trajectory::TrajectoryPlugin,
             ui::UiPlugin,
             path::PathPlugin,
             sounds::SoundsPlugin,

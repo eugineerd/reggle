@@ -224,10 +224,7 @@ pub fn sync_colliders_system(
     mut trajectory_world: ResMut<TrajectoryWorld>,
     added_colliders: Query<(Entity, &Transform, &Collider), Added<Collider>>,
     changed_colliders: Query<(Entity, &Collider), Changed<Collider>>,
-    moved_colliders: Query<
-        (Entity, &Transform),
-        (Changed<Transform>, With<Collider>, Without<RigidBody>),
-    >,
+    moved_colliders: Query<(Entity, &Transform), (Changed<Transform>, With<Collider>)>,
     mut removed_colliders: RemovedComponents<Collider>,
 ) {
     changed_colliders.for_each(|(entity, collider)| {
