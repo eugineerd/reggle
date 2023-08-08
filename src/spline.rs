@@ -4,7 +4,7 @@ const SEGMENTS_MAX_ITER_NUM: usize = 10;
 const SEGMENTS_ANGLE_TOL: f32 = 0.4;
 const SEGMENTS_MAX_STEP: f32 = 0.1;
 
-#[derive(Reflect)]
+#[derive(Reflect, Clone, Copy)]
 pub enum SegmentType {
     None,
     Linear,
@@ -17,7 +17,7 @@ impl Default for SegmentType {
     }
 }
 
-#[derive(Default, Reflect)]
+#[derive(Default, Reflect, Clone)]
 pub struct Segment {
     pub typ: SegmentType,
     len: f32,
@@ -40,17 +40,9 @@ impl Segment {
     pub fn len(&self) -> f32 {
         self.len
     }
-}
-
-#[derive(Default, Reflect)]
-pub struct Spline {
-    pub segment: Segment,
-}
-
-impl Spline {
     pub fn get_pos(&self, mut t: f32, neighbors: &[Vec2; 4]) -> Vec2 {
         t = t.clamp(0.0, 1.0);
-        match self.segment.typ {
+        match self.typ {
             SegmentType::None => neighbors[1],
             SegmentType::Linear => {
                 let p2 = neighbors[2];
@@ -69,8 +61,8 @@ impl Spline {
 
     pub fn get_pos_cached(&self, mut t: f32) -> Option<Vec2> {
         t = t.clamp(0.0, 1.0);
-        let points = self.segment.points();
-        let distances = &self.segment.distnaces;
+        let points = self.points();
+        let distances = &self.distnaces;
         if points.len() == 0 {
             return None;
         }
@@ -78,7 +70,7 @@ impl Spline {
             return Some(points[0] + (points[1] - points[0]) * t);
         }
 
-        let target_distnace = self.segment.len() * t;
+        let target_distnace = self.len() * t;
         let mut start = 0;
         let mut end = distances.len();
         let mut idx = (start + end) / 2;
@@ -106,7 +98,7 @@ impl Spline {
 
     pub fn get_pos_and_vel(&self, mut t: f32, neighbors: &[Vec2; 4]) -> (Vec2, Vec2) {
         t = t.clamp(0.0, 1.0);
-        match self.segment.typ {
+        match self.typ {
             SegmentType::None => (neighbors[1], Vec2::ZERO),
             SegmentType::Linear => {
                 let p1 = neighbors[1];
@@ -124,21 +116,21 @@ impl Spline {
         }
     }
 
-    pub fn tessellate_segment(&mut self, neighbors: Option<&[Vec2; 4]>) {
-        self.segment.points.clear();
-        self.segment.distnaces.clear();
-        self.segment.len = 0.0;
+    pub fn tessellate(&mut self, neighbors: Option<&[Vec2; 4]>) {
+        self.points.clear();
+        self.distnaces.clear();
+        self.len = 0.0;
         let Some(neighbors) = neighbors else {return};
-        if let SegmentType::Linear = self.segment.typ {
-            self.segment.points.push(neighbors[1]);
-            self.segment.points.push(neighbors[2]);
-            self.segment.len = (neighbors[2] - neighbors[1]).length();
-            self.segment.distnaces.push(self.segment.len);
+        if let SegmentType::Linear = self.typ {
+            self.points.push(neighbors[1]);
+            self.points.push(neighbors[2]);
+            self.len = (neighbors[2] - neighbors[1]).length();
+            self.distnaces.push(self.len);
             return;
         }
         let mut t_last = 0.0f32;
         let (mut x_last, mut dt_last) = self.get_pos_and_vel(t_last, neighbors);
-        self.segment.points.push(x_last);
+        self.points.push(x_last);
         while t_last < 1.0 {
             let mut t = (t_last + SEGMENTS_MAX_STEP).min(1.0);
             let (mut x, mut dt) = self.get_pos_and_vel(t, neighbors);
@@ -150,9 +142,9 @@ impl Spline {
                 t = (t_last + t) / 2.0;
                 (x, dt) = self.get_pos_and_vel(t, neighbors);
             }
-            self.segment.distnaces.push(self.segment.len);
-            self.segment.len += (x - x_last).length();
-            self.segment.points.push(x);
+            self.distnaces.push(self.len);
+            self.len += (x - x_last).length();
+            self.points.push(x);
             (t_last, x_last, dt_last) = (t, x, dt);
         }
     }

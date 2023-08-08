@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 use std::time::Duration;
 
 use crate::common::{GameState, GameStats, InGameState};
-use crate::path::{Path, PathAgent, PathBundle, PathPoint};
+use crate::path::{Path, PathAgent, PathPoint};
 use crate::sounds::{play_collision_sound, CollisionSound, SoundType};
 use crate::{assets::GameAssets, PEG_RADIUS};
 
@@ -195,33 +195,23 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
     commands.spawn_batch(pegs.into_iter());
 
     commands
-        .spawn(PathBundle {
-            path: Path {
-                points: vec![
-                    PathPoint {
-                        pos: Vec2::new(-300.0, 300.0),
-                        ..Default::default()
-                    },
-                    PathPoint {
-                        pos: Vec2::new(300.0, 300.0),
-                        ..Default::default()
-                    },
-                    PathPoint {
-                        pos: Vec2::new(300.0, -300.0),
-                        ..Default::default()
-                    },
-                    PathPoint {
-                        pos: Vec2::new(-300.0, -300.0),
-                        ..Default::default()
-                    },
-                ],
-                looped: true,
-                move_speed: 100.0,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
+        .spawn((
+            Path::new(100.0, true),
+            TransformBundle::default(),
+            VisibilityBundle::default(),
+        ))
         .with_children(|cb| {
+            for i in vec![
+                Vec2::new(-300.0, 300.0),
+                Vec2::new(300.0, 300.0),
+                Vec2::new(300.0, -300.0),
+                Vec2::new(-300.0, -300.0),
+            ] {
+                cb.spawn((
+                    PathPoint::default(),
+                    TransformBundle::from_transform(Transform::from_translation(i.extend(0.0))),
+                ));
+            }
             for i in 0..20 {
                 cb.spawn((
                     PegBundle {

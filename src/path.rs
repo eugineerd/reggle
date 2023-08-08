@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::{common::GameState, spline::Spline};
+use crate::{
+    common::GameState,
+    spline::{Segment, SegmentType},
+};
 
 pub struct PathPlugin;
 
@@ -8,66 +11,94 @@ impl Plugin for PathPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (tessellate_path_segments, (draw_path, move_path_agents))
+            (
+                sync_path_points,
+                tessellate_path_segments,
+                (draw_path, move_path_agents),
+            )
                 .chain()
                 .run_if(in_state(GameState::InGame)),
         )
         .register_type::<Path>()
-        .register_type::<PathAgent>();
+        .register_type::<PathAgent>()
+        .register_type::<PathPoint>();
     }
 }
 
-#[derive(Bundle, Default)]
-pub struct PathBundle {
-    pub path: Path,
-    pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
-    pub local_tranform: Transform,
-    pub global_transform: GlobalTransform,
-}
-
-#[derive(Reflect, Default)]
+#[derive(Reflect, Default, Clone, Copy)]
 pub enum PathEasingFunction {
     None,
     #[default]
     Constant,
 }
 
-#[derive(Reflect, Default)]
+struct RawPathPoint {
+    pos: Vec2,
+    segment: Segment,
+    speed_multiplier: f32,
+    easing_function: PathEasingFunction,
+    entity: Entity,
+}
+
+#[derive(Component, Reflect, Default, Clone)]
 pub struct PathPoint {
-    pub pos: Vec2,
-    pub spline: Spline,
+    pub segment_type: SegmentType,
     pub speed_multiplier: f32,
     pub easing_function: PathEasingFunction,
 }
 
+impl PathPoint {
+    fn as_raw(&self, translation: Vec3, self_entity: Entity) -> RawPathPoint {
+        let Self {
+            segment_type,
+            speed_multiplier,
+            easing_function,
+        } = *self;
+        RawPathPoint {
+            pos: translation.truncate(),
+            entity: self_entity,
+            segment: Segment::new(segment_type),
+            speed_multiplier,
+            easing_function,
+        }
+    }
+}
+
 #[derive(Component, Default, Reflect)]
 pub struct Path {
-    pub points: Vec<PathPoint>,
+    #[reflect(ignore)]
+    points: Vec<RawPathPoint>,
     pub move_speed: f32,
     pub looped: bool,
 }
 
 impl Path {
+    pub fn new(move_speed: f32, looped: bool) -> Self {
+        Self {
+            move_speed,
+            looped,
+            ..Default::default()
+        }
+    }
     pub fn get_world_pos(&self, t: f32) -> Vec2 {
         let point_idx = (t.floor() as usize).clamp(0, self.points.len() - 1);
         let point = &self.points[point_idx];
 
         if let PathEasingFunction::Constant = point.easing_function {
             point
-                .spline
+                .segment
                 .get_pos_cached(t - point_idx as f32)
                 .unwrap_or(self.points[point_idx].pos)
         } else {
             let Some(neigbors) = self.get_neigbors_positions(point_idx) else {return point.pos};
-            point.spline.get_pos(t - point_idx as f32, &neigbors)
+            point.segment.get_pos(t - point_idx as f32, &neigbors)
         }
     }
 
     pub fn tessellate_segments(&mut self) {
         for i in 0..self.points.len() {
             let neighbors = self.get_neigbors_positions(i);
-            self.points[i].spline.tessellate_segment(neighbors.as_ref());
+            self.points[i].segment.tessellate(neighbors.as_ref());
         }
     }
 
@@ -108,7 +139,7 @@ impl Path {
 
         let mut agent_distance = self.move_speed * time_delta;
         loop {
-            let segment = &self.points[point_idx].spline.segment;
+            let segment = &self.points[point_idx].segment;
             let seg_distance = (1.0 - t) * segment.len();
             if seg_distance < f32::EPSILON || seg_distance.is_nan() {
                 break;
@@ -158,7 +189,7 @@ fn draw_path(paths: Query<(&Path, &Transform, &ComputedVisibility)>, mut gizmos:
         let path_pos = tr.translation.truncate();
         for point in &path.points {
             gizmos.circle_2d(point.pos + path_pos, 5.0, Color::RED);
-            let segment = &point.spline.segment;
+            let segment = &point.segment;
             if segment.len() == 0.0 {
                 continue;
             }
@@ -170,8 +201,41 @@ fn draw_path(paths: Query<(&Path, &Transform, &ComputedVisibility)>, mut gizmos:
     }
 }
 
-fn tessellate_path_segments(mut paths: Query<&mut Path, Changed<Path>>) {
+fn tessellate_path_segments(mut paths: Query<&mut Path, Or<(Changed<Path>, Changed<Transform>)>>) {
     for mut path in paths.iter_mut() {
         path.tessellate_segments();
+    }
+}
+
+fn sync_path_points(
+    mut paths: Query<&mut Path>,
+    changed_points: Query<
+        (Entity, &PathPoint, &GlobalTransform, &Parent),
+        Or<(Changed<PathPoint>, Changed<GlobalTransform>)>,
+    >,
+    mut removed_points: RemovedComponents<PathPoint>,
+) {
+    for (point_e, point, tr, parent) in changed_points.iter() {
+        let Ok(mut path) = paths.get_mut(parent.get()) else {continue};
+        let new_raw_point = point.as_raw(tr.translation(), point_e);
+        if let Some(raw_point) = path.points.iter_mut().find(|p| p.entity == point_e) {
+            *raw_point = new_raw_point;
+        } else {
+            path.points.push(new_raw_point);
+        };
+    }
+    for removed_point in removed_points.iter() {
+        // Not optimal
+        for mut path in paths.iter_mut() {
+            // Avoid triggering change detection unless point is actually removed
+            if let Some(idx) = path
+                .bypass_change_detection()
+                .points
+                .iter()
+                .position(|e| e.entity == removed_point)
+            {
+                path.points.remove(idx);
+            }
+        }
     }
 }
