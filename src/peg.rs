@@ -109,7 +109,6 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
             ..Default::default()
         },
         collider: Collider::ball(PEG_RADIUS),
-        ..Default::default()
     };
     let mut round_target_peg_preset = round_peg_preset.clone();
     round_target_peg_preset.sprite.color = Color::ORANGE;
@@ -138,7 +137,6 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
             ..Default::default()
         },
         collider: Collider::cuboid(PEG_RADIUS * 1.5, PEG_RADIUS),
-        ..Default::default()
     };
     let mut rect_target_peg_preset = rect_peg_preset.clone();
     rect_target_peg_preset.sprite.color = Color::GREEN;
@@ -167,7 +165,7 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
                 .clone();
             pegs.push(PegBundle {
                 peg: Peg {
-                    presets: presets,
+                    presets,
                     ..Default::default()
                 },
                 sprite_bundle: SpriteBundle {
@@ -201,7 +199,7 @@ fn spawn_peg_system(mut commands: Commands, game_assets: Res<GameAssets>) {
             VisibilityBundle::default(),
         ))
         .with_children(|cb| {
-            for i in vec![
+            for i in [
                 Vec2::new(-300.0, 300.0),
                 Vec2::new(300.0, 300.0),
                 Vec2::new(300.0, -300.0),

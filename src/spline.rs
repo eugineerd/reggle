@@ -13,7 +13,7 @@ pub enum SegmentType {
 
 impl Default for SegmentType {
     fn default() -> Self {
-        return SegmentType::CatmullRom(0.5);
+        SegmentType::CatmullRom(0.5)
     }
 }
 
@@ -63,7 +63,7 @@ impl Segment {
         t = t.clamp(0.0, 1.0);
         let points = self.points();
         let distances = &self.distnaces;
-        if points.len() == 0 {
+        if points.is_empty() {
             return None;
         }
         if points.len() == 2 {
@@ -170,9 +170,7 @@ fn catmull_rom_spline(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, mut alpha: f32, mu
     let b1 = (t2 - t) / (t2 - t0) * a1 + (t - t0) / (t2 - t0) * a2;
     let b2 = (t3 - t) / (t3 - t1) * a2 + (t - t1) / (t3 - t1) * a3;
 
-    let c = (t2 - t) / (t2 - t1) * b1 + (t - t1) / (t2 - t1) * b2;
-
-    c
+    (t2 - t) / (t2 - t1) * b1 + (t - t1) / (t2 - t1) * b2
 }
 
 fn catmull_rom_spline_with_derivative(

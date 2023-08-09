@@ -20,7 +20,7 @@ impl Plugin for SoundsPlugin {
 pub enum SoundType {
     #[default]
     None,
-    Single(Handle<AudioSource>),
+    _Single(Handle<AudioSource>),
     Random(Arc<Vec<Handle<AudioSource>>>),
 }
 
@@ -44,7 +44,7 @@ impl Default for CollisionSound {
 impl CollisionSound {
     pub fn play(&self, audio: &Audio) {
         match &self.sound {
-            SoundType::Single(h) => {
+            SoundType::_Single(h) => {
                 audio.play(h.clone());
             }
             SoundType::Random(hs) => {
@@ -66,12 +66,13 @@ pub fn play_collision_sound(
         let CollisionEvent::Started(e1, e2, _) = e else {continue};
         let css = match (ents.get(*e1), ents.get(*e2)) {
             (Ok(cs_a), Ok(cs_b)) => {
-                if cs_a.priority == cs_b.priority {
-                    [Some(cs_a), Some(cs_b)]
-                } else if cs_a.priority > cs_b.priority {
-                    [Some(cs_a), None]
-                } else {
-                    [Some(cs_b), None]
+                match (
+                    cs_a.priority == cs_b.priority,
+                    cs_a.priority > cs_b.priority,
+                ) {
+                    (true, _) => [Some(cs_a), Some(cs_b)],
+                    (false, true) => [Some(cs_a), None],
+                    _ => [Some(cs_b), None],
                 }
             }
             (Ok(cs), Err(_)) => [Some(cs), None],

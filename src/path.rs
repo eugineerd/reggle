@@ -35,7 +35,7 @@ pub enum PathEasingFunction {
 struct RawPathPoint {
     pos: Vec2,
     segment: Segment,
-    speed_multiplier: f32,
+    _speed_multiplier: f32,
     easing_function: PathEasingFunction,
     entity: Entity,
 }
@@ -43,7 +43,7 @@ struct RawPathPoint {
 #[derive(Component, Reflect, Default, Clone)]
 pub struct PathPoint {
     pub segment_type: SegmentType,
-    pub speed_multiplier: f32,
+    pub _speed_multiplier: f32,
     pub easing_function: PathEasingFunction,
 }
 
@@ -51,14 +51,14 @@ impl PathPoint {
     fn as_raw(&self, translation: Vec3, self_entity: Entity) -> RawPathPoint {
         let Self {
             segment_type,
-            speed_multiplier,
+            _speed_multiplier,
             easing_function,
         } = *self;
         RawPathPoint {
             pos: translation.truncate(),
             entity: self_entity,
             segment: Segment::new(segment_type),
-            speed_multiplier,
+            _speed_multiplier,
             easing_function,
         }
     }

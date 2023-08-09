@@ -61,7 +61,7 @@ fn angle_to_hit_target(start_pos: Vec2, target_pos: Vec2, g: f32, v: f32) -> f32
     let r = (v.powi(4) - g * (g * x * x + 2.0 * y * v * v)).sqrt();
     let mut r = ((v * v - r) / (g * x)).atan();
     if x < 0.0 {
-        r = r - std::f32::consts::PI;
+        r -= std::f32::consts::PI;
     }
     r
 }

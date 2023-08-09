@@ -3,7 +3,7 @@ use bevy::utils::{HashMap, HashSet};
 use bevy_prototype_lyon::prelude::{Fill, GeometryBuilder, PathBuilder, ShapeBundle, Stroke};
 use bevy_prototype_lyon::shapes::Circle;
 use bevy_rapier2d::na;
-use bevy_rapier2d::prelude::{Collider, RapierConfiguration, Restitution, RigidBody};
+use bevy_rapier2d::prelude::{Collider, RapierConfiguration, Restitution};
 use bevy_rapier2d::rapier::prelude::{
     BroadPhase, CCDSolver, ColliderBuilder, ColliderHandle, ColliderSet, ImpulseJointSet,
     IntegrationParameters, IslandManager, MultibodyJointSet, NarrowPhase, PhysicsPipeline,
