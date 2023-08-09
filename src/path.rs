@@ -10,12 +10,12 @@ pub struct PathPlugin;
 impl Plugin for PathPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            PreUpdate,
+            sync_path_points.run_if(in_state(GameState::InGame)),
+        )
+        .add_systems(
             Update,
-            (
-                sync_path_points,
-                tessellate_path_segments,
-                (draw_path, move_path_agents),
-            )
+            (tessellate_path_segments, (draw_path, move_path_agents))
                 .chain()
                 .run_if(in_state(GameState::InGame)),
         )
@@ -79,6 +79,9 @@ impl Path {
             looped,
             ..Default::default()
         }
+    }
+    pub fn is_valid(&self) -> bool {
+        !self.points.is_empty()
     }
     pub fn get_world_pos(&self, t: f32) -> Vec2 {
         let point_idx = (t.floor() as usize).clamp(0, self.points.len() - 1);
@@ -175,6 +178,9 @@ fn move_path_agents(
 ) {
     for (mut agent, mut tr, path) in agents.iter_mut() {
         let Ok(path) = paths.get(path.get()) else {continue};
+        if !path.is_valid() {
+            continue;
+        }
 
         agent.t = path.move_agent_along_path(agent.t, time.delta_seconds());
         tr.translation = path.get_world_pos(agent.t).extend(tr.translation.z)
@@ -210,14 +216,14 @@ fn tessellate_path_segments(mut paths: Query<&mut Path, Or<(Changed<Path>, Chang
 fn sync_path_points(
     mut paths: Query<&mut Path>,
     changed_points: Query<
-        (Entity, &PathPoint, &GlobalTransform, &Parent),
-        Or<(Changed<PathPoint>, Changed<GlobalTransform>)>,
+        (Entity, &PathPoint, &Transform, &Parent),
+        Or<(Changed<PathPoint>, Changed<Transform>)>,
     >,
     mut removed_points: RemovedComponents<PathPoint>,
 ) {
     for (point_e, point, tr, parent) in changed_points.iter() {
         let Ok(mut path) = paths.get_mut(parent.get()) else {continue};
-        let new_raw_point = point.as_raw(tr.translation(), point_e);
+        let new_raw_point = point.as_raw(tr.translation, point_e);
         if let Some(raw_point) = path.points.iter_mut().find(|p| p.entity == point_e) {
             *raw_point = new_raw_point;
         } else {
